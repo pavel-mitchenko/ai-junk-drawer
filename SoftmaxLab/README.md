@@ -3,7 +3,7 @@
 An interactive playground for building intuition about how softmax behaves in language models. Move a slider, watch probabilities respond.
 
 ## Screenshots
-<img src="screenshots/01.png" alt="Default view" width="600">
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/65ade242-1fff-45dd-a015-abb7b342ffd6" />
  
 ## What you can do
  
