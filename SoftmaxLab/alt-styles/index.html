@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Softmax Lab — Alternate Styles</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --line: #e7e7ea;
+    --line-soft: #f0f0f3;
+    --text: #18181b;
+    --text-muted: #71717a;
+    --text-soft: #a1a1aa;
+    --accent: #18181b;
+    --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 80px 32px 80px;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 56px;
+    max-width: 640px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: clamp(32px, 5vw, 44px);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  .lede {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text-muted);
+  }
+
+  /* Section heading */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 0;
+  }
+  .section-head h2 {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .section-head .count {
+    font-size: 11px;
+    color: var(--text-soft);
+    letter-spacing: 0.06em;
+  }
+
+  /* Style list */
+  .styles {
+    list-style: none;
+  }
+  .style {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    gap: 24px;
+    align-items: baseline;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line);
+    text-decoration: none;
+    color: inherit;
+    transition: padding 280ms cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  .style::before {
+    content: "";
+    position: absolute;
+    left: -16px;
+    top: 50%;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transform: translateY(-50%);
+    transition: width 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .style:hover { padding-left: 16px; }
+  .style:hover::before { width: 12px; }
+  .style:hover .style-name { text-decoration: underline; text-underline-offset: 4px; }
+  .style:hover .arrow { transform: translate(4px, -4px); }
+
+  .style-num {
+    font-size: 11px;
+    color: var(--text-soft);
+    letter-spacing: 0.04em;
+    align-self: baseline;
+    padding-top: 6px;
+  }
+  .style-body { min-width: 0; }
+  .style-name {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+  .style-tagline {
+    margin-top: 6px;
+    color: var(--text-soft);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .style-blurb {
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 56ch;
+  }
+
+  .arrow {
+    align-self: baseline;
+    padding-top: 10px;
+    color: var(--text-soft);
+    transition: transform 220ms ease;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--text-soft);
+    letter-spacing: 0.04em;
+  }
+  footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--transition), color var(--transition);
+  }
+  footer a:hover { color: var(--text); border-bottom-color: var(--line); }
+
+  @media (max-width: 560px) {
+    .page { padding: 48px 22px 56px; }
+    .style {
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+    }
+    .arrow { display: none; }
+    .style-name { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <p class="eyebrow mono">Softmax Lab / alt styles</p>
+    <h1>Same app, different skins.</h1>
+    <p class="lede">
+      One AI-built dashboard, four visual treatments. The math, layout, and interactions are identical across all of them — only the typography, palette and surface treatment change. Pick one to open it.
+    </p>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h2 class="mono">Variants</h2>
+      <span class="count mono">03 total</span>
+    </div>
+
+    <ul class="styles">
+
+      <a class="style" href="0.html">
+        <span class="style-num mono">00</span>
+        <div class="style-body">
+          <div class="style-name">Default</div>
+          <div class="style-tagline mono">light · refined · technical</div>
+          <p class="style-blurb">The original. Clean white panels, system font, soft shadows, single violet accent. Quiet and readable — built to disappear behind the data.</p>
+        </div>
+        <span class="arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        </span>
+      </a>
+
+      <a class="style" href="1.html">
+        <span class="style-num mono">01</span>
+        <div class="style-body">
+          <div class="style-name">Y2K / cyber-Tamagotchi</div>
+          <div class="style-tagline mono">acid · glossy · 2003</div>
+          <p class="style-blurb">Black background washed in violet, cyan and magenta. Orbitron headlines, glassy pill buttons, glowing knobs. Loud on purpose — channels Winamp skins and the iPod era.</p>
+        </div>
+        <span class="arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        </span>
+      </a>
+
+      <a class="style" href="2.html">
+        <span class="style-num mono">02</span>
+        <div class="style-body">
+          <div class="style-name">Terminal / hacker</div>
+          <div class="style-tagline mono">amber phosphor · CLI · CRT</div>
+          <p class="style-blurb">Pure black, JetBrains Mono everywhere, amber and phosphor green. Labels rendered as CLI flags (<span class="mono">--temp=1.00</span>), ASCII checkboxes, scanlines, blinking cursor. Reads like a TUI from a terminal-native ML toolchain.</p>
+        </div>
+        <span class="arrow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        </span>
+      </a>
+
+    </ul>
+  </section>
+
+  <footer>
+    <span class="mono">↑ same softmax math, three different moods</span>
+  </footer>
+
+</div>
+</body>
+</html>
