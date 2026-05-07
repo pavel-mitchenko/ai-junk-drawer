@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Softmax Lab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  /* ============================================================
+     Softmax Lab — Brutalist / Swiss-poster edition
+     Black + paper white + one pure red. Inter 900 everywhere.
+     Heavy 2-3px rules, zero rounding, grid-poster discipline.
+     ============================================================ */
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f3ec;          /* paper-white, slight cream */
+    --paper: #ffffff;
+    --ink: #0a0a0a;
+    --rule: #0a0a0a;
+    --rule-faint: #c9c5b8;
+    --red: #e30613;         /* swiss-red */
+    --red-dark: #b00410;
+    --muted: #6a6a6a;
+    --soft: #a8a8a0;
+
+    --transition: 100ms linear;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  ::selection { background: var(--red); color: var(--paper); }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "ss01", "cv11", "tnum";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  .page {
+    max-width: 1340px;
+    margin: 0 auto;
+    padding: 18px 24px 18px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-left: 2px solid var(--ink);
+    border-right: 2px solid var(--ink);
+  }
+
+  /* ========== Header ========== */
+  .page-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 24px;
+    flex-shrink: 0;
+    padding: 8px 0 12px;
+    border-bottom: 3px solid var(--ink);
+    margin-bottom: 12px;
+  }
+  .page-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: clamp(40px, 7vw, 84px);
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--ink);
+  }
+  /* Inject the red accent on second word — done via CSS counter trick:
+     can't split on whitespace here, so we use a ::before for an issue-number
+     plate, like a magazine masthead. */
+  .page-title::before {
+    content: '№ 03';
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.18em;
+    font-weight: 500;
+    color: var(--paper);
+    background: var(--red);
+    padding: 4px 8px;
+    margin-right: 14px;
+    vertical-align: 1.6em;
+    letter-spacing: 0.06em;
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    text-align: right;
+  }
+  .page-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    max-width: 260px;
+    text-align: right;
+    line-height: 1.4;
+  }
+
+  /* Lang switch — boxed black */
+  .lang-switch {
+    display: inline-flex;
+    background: var(--ink);
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .lang-btn {
+    background: var(--ink);
+    border: none;
+    color: var(--soft);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: 0.06em;
+  }
+  .lang-btn:hover { color: var(--paper); }
+  .lang-btn.active {
+    background: var(--red);
+    color: var(--paper);
+  }
+
+  @media (max-width: 720px) {
+    .page-subtitle { display: none; }
+  }
+
+  /* ========== Card / panel ========== */
+  .card {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    box-shadow: none;
+    position: relative;
+  }
+
+  /* ========== Top control row ========== */
+  .top-row {
+    padding: 14px 18px;
+    display: flex;
+    align-items: stretch;
+    gap: 18px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    margin-bottom: -2px;  /* collapse border with main below */
+  }
+  .sliders-col {
+    flex: 1 1 360px;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    justify-content: center;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .slider-row .slider-label {
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .slider-row input[type="range"] { flex: 1; }
+  .slider-row .count-value {
+    min-width: 70px;
+    text-align: right;
+  }
+
+  .slider-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .count-value {
+    font-family: 'Inter', sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+    color: var(--ink);
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+
+  /* ========== Sliders ========== */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--ink);
+    border: none;
+    border-radius: 0;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 24px;
+    background: var(--red);
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--ink);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 24px;
+    background: var(--red);
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    cursor: pointer;
+  }
+
+  /* ========== Buttons ========== */
+  .btn {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    padding: 8px 14px;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    white-space: nowrap;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: 3px 3px 0 var(--red);
+  }
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--ink);
+  }
+  .btn svg { color: currentColor; }
+
+  /* Primary button = filled red, the only red in the chrome */
+  .btn-primary, .fill-btn.primary {
+    background: var(--red);
+    color: var(--paper);
+    border-color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .btn-primary:hover, .fill-btn.primary:hover {
+    background: var(--ink);
+    color: var(--red);
+    box-shadow: 3px 3px 0 var(--red);
+  }
+  .btn-primary svg, .fill-btn.primary svg { color: currentColor; }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 0;
+    transition: all var(--transition);
+  }
+  .icon-btn:hover {
+    background: var(--red);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .icon-btn-placeholder {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* ========== Main layout ========== */
+  .main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .charts-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .chart-card {
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 14px 18px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .chart-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .chart-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .chart-header-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .chart-wrap {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+  }
+
+  /* ========== Lock toggle ========== */
+  .lock-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .lock-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+  .lock-icon {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    background: var(--paper);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    transition: all var(--transition);
+    position: relative;
+  }
+  .lock-icon svg {
+    width: 12px;
+    height: 12px;
+    position: absolute;
+    transition: opacity 100ms linear;
+    stroke-width: 2.5;
+  }
+  .lock-icon .lock-closed { opacity: 0; }
+  .lock-toggle:hover .lock-icon {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .lock-toggle input:checked ~ .lock-icon {
+    background: var(--red);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .lock-toggle input:checked ~ .lock-icon .lock-open { opacity: 0; }
+  .lock-toggle input:checked ~ .lock-icon .lock-closed { opacity: 1; }
+
+  /* ========== Sidebar ========== */
+  .sidebar {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+  .sidebar::-webkit-scrollbar { width: 8px; }
+  .sidebar::-webkit-scrollbar-track { background: var(--paper); }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--ink); }
+
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sidebar-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 4px;
+  }
+
+  /* ========== Number inputs ========== */
+  .number-input {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    padding: 6px 10px;
+    font-variant-numeric: tabular-nums;
+    transition: all var(--transition);
+    outline: none;
+  }
+  .number-input:focus {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--red);
+  }
+  .number-input:disabled {
+    color: var(--soft);
+    background: var(--rule-faint);
+    cursor: not-allowed;
+    border-color: var(--soft);
+  }
+  .no-spin::-webkit-outer-spin-button,
+  .no-spin::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .no-spin {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /* ========== Fill section ========== */
+  .fill-btn { width: 100%; padding: 9px 14px; }
+  .fill-btn-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .range-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .range-field {
+    position: relative;
+    display: block;
+  }
+  .range-tag {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    font-weight: 900;
+    color: var(--ink);
+    pointer-events: none;
+    user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .range-num {
+    width: 100%;
+    padding-left: 38px;
+    text-align: right;
+  }
+
+  .steps-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .steps-row .range-field { display: block; }
+  .steps-row .fill-btn { width: 100%; }
+
+  /* ========== Filters ========== */
+  .filter-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .filter-block + .filter-block {
+    padding-top: 14px;
+    border-top: 2px solid var(--ink);
+  }
+  .filter-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .filter-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--ink);
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .filter-block.disabled .filter-name { color: var(--soft); }
+  .filter-block .number-input { width: 100%; }
+
+  /* Brutalist checkbox: filled red square when checked */
+  .check {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .check input {
+    position: absolute;
+    opacity: 0;
+    width: 100%; height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+  .check-box {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+  }
+  .check-box svg {
+    width: 14px;
+    height: 14px;
+    color: var(--paper);
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 100ms linear, transform 100ms linear;
+    stroke-width: 4;
+  }
+  .check input:checked + .check-box {
+    background: var(--red);
+    border-color: var(--ink);
+  }
+  .check input:checked + .check-box svg {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .check:hover .check-box { background: var(--ink); }
+  .check:hover input:checked + .check-box { background: var(--red); }
+
+  /* ========== Edit overlay ========== */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms linear;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+
+  .edit-modal {
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    box-shadow: 8px 8px 0 var(--red);
+    padding: 24px 28px;
+    min-width: 340px;
+    transform: translate(4px, 4px);
+    transition: transform 150ms linear;
+    position: relative;
+  }
+  .overlay.show .edit-modal { transform: translate(0, 0); }
+
+  .edit-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .edit-modal input {
+    width: 100%;
+    font-size: 32px;
+    font-weight: 900;
+    padding: 12px 14px;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+  .edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  /* ========== Mobile ========== */
+  @media (max-width: 880px) {
+    html, body { overflow: auto; height: auto; }
+    .page { height: auto; border-left: none; border-right: none; }
+    .main { grid-template-columns: 1fr; }
+    .charts-stack { min-height: 480px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-header">
+    <h1 class="page-title" data-i18n="title">Softmax Lab</h1>
+    <div class="header-right">
+      <span class="page-subtitle" data-i18n="subtitle">логиты → температура → top-k / top-p → вероятности</span>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang="ru">RU</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Top: count + temperature sliders -->
+  <section class="card top-row">
+    <div class="sliders-col">
+      <div class="slider-row">
+        <span class="slider-label" data-i18n="logitsCount">Логитов</span>
+        <input type="range" id="count" min="2" max="100" step="1" value="10">
+        <span class="count-value" id="countVal">10</span>
+        <button class="icon-btn icon-btn-placeholder" disabled aria-hidden="true" tabindex="-1"></button>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label" data-i18n="temperature">Температура</span>
+        <input type="range" id="tempSlider" min="0.01" max="50" step="0.01" value="1.00">
+        <span class="count-value" id="tempVal">1.00</span>
+        <button class="icon-btn" id="tempReset" data-i18n-title="tempResetTitle" data-i18n-aria="tempResetAria" title="Сбросить температуру в 1.00" aria-label="Сбросить температуру">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 9 8 9"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main: charts on the left, sidebar on the right -->
+  <div class="main">
+    <div class="charts-stack">
+      <section class="card chart-card">
+        <div class="chart-header">
+          <span class="chart-title" data-i18n="logitsTitle">Логиты</span>
+          <span class="chart-hint" data-i18n="logitsHint">кликни по столбцу — изменить</span>
+        </div>
+        <div class="chart-wrap"><canvas id="logitsChart"></canvas></div>
+      </section>
+
+      <section class="card chart-card">
+        <div class="chart-header">
+          <span class="chart-title" data-i18n="probsTitle">Вероятности</span>
+          <div class="chart-header-right">
+            <span class="chart-hint" id="probsHint">softmax(L / T)</span>
+            <label class="lock-toggle" data-i18n-title="lockScaleTitle" title="Зафиксировать масштаб 0–100%">
+              <input type="checkbox" id="lockScale">
+              <span class="lock-icon" aria-hidden="true">
+                <svg class="lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
+                <svg class="lock-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="probsChart"></canvas></div>
+      </section>
+    </div>
+
+    <aside class="card sidebar">
+
+      <div class="sidebar-section">
+        <span class="sidebar-label" data-i18n="fillSection">Заполнение</span>
+
+        <div class="range-pair">
+          <label class="range-field">
+            <span class="range-tag" data-i18n="rangeFrom">от</span>
+            <input type="number" class="number-input range-num no-spin" id="randMin" min="0" max="1000" step="0.001" value="0">
+          </label>
+          <label class="range-field">
+            <span class="range-tag" data-i18n="rangeTo">до</span>
+            <input type="number" class="number-input range-num no-spin" id="randMax" min="0" max="1000" step="0.001" value="1.5">
+          </label>
+        </div>
+        <button class="btn fill-btn primary" id="btnRandom" data-i18n-title="btnRandomTitle" title="Случайные значения в указанном диапазоне">
+          <span class="fill-btn-content">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="16" r="1.2" fill="currentColor"/><circle cx="16" cy="16" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>
+            <span data-i18n="btnRandom">Случайные</span>
+          </span>
+        </button>
+
+        <div class="steps-row">
+          <label class="range-field">
+            <span class="range-tag" data-i18n="stepLabel">шаг</span>
+            <input type="number" class="number-input range-num no-spin" id="stepValue" min="0" max="1000" step="0.001" value="0.693">
+          </label>
+          <button class="btn fill-btn" id="btnSteps" data-i18n-title="btnStepsTitle" title="Логиты 1, 1+шаг, 1+2·шаг, … При шаге ln(2)≈0.693 соседние вероятности отличаются в 2 раза.">
+            <span class="fill-btn-content">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 18 9 18 9 13 15 13 15 8 21 8 21 4"/></svg>
+              <span data-i18n="btnSteps">Ступеньки</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="steps-row">
+          <label class="range-field">
+            <span class="range-tag" data-i18n="constLabel">знач.</span>
+            <input type="number" class="number-input range-num no-spin" id="constValue" min="0" max="1000" step="0.001" value="1">
+          </label>
+          <button class="btn fill-btn" id="btnConst" data-i18n-title="btnConstTitle" title="Заполнить все логиты одинаковым значением">
+            <span class="fill-btn-content">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="8"/><line x1="10" y1="20" x2="10" y2="8"/><line x1="16" y1="20" x2="16" y2="8"/></svg>
+              <span data-i18n="btnConst">Заполнить</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <span class="sidebar-label" data-i18n="filtersSection">Фильтры</span>
+
+        <div class="filter-block disabled" id="topkRow">
+          <div class="filter-head">
+            <label class="check">
+              <input type="checkbox" id="topkEnable">
+              <span class="check-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"/></svg>
+              </span>
+            </label>
+            <span class="filter-name">Top-k</span>
+          </div>
+          <input type="number" class="number-input" id="topkValue" min="1" max="50" step="1" value="10" disabled>
+        </div>
+
+        <div class="filter-block disabled" id="toppRow">
+          <div class="filter-head">
+            <label class="check">
+              <input type="checkbox" id="toppEnable">
+              <span class="check-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"/></svg>
+              </span>
+            </label>
+            <span class="filter-name">Top-p</span>
+          </div>
+          <input type="number" class="number-input" id="toppValue" min="0.01" max="1.00" step="0.01" value="0.90" disabled>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Edit logit modal -->
+<div class="overlay" id="overlay">
+  <div class="edit-modal">
+    <p class="edit-title"><span data-i18n="editLogit">Логит</span> <span id="editIdx"></span></p>
+    <input type="number" class="number-input" id="editInput" min="0" max="1000" step="0.001">
+    <div class="edit-actions">
+      <button class="btn" id="editCancel" data-i18n="cancel">Отмена</button>
+      <button class="btn btn-primary" id="editOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- i18n ---------- */
+const I18N = {
+  ru: {
+    title: 'Softmax Lab',
+    subtitle: 'логиты → температура → top-k / top-p → вероятности',
+    logitsCount: 'Логитов',
+    temperature: 'Температура',
+    tempResetTitle: 'Сбросить температуру в 1.00',
+    tempResetAria: 'Сбросить температуру',
+    logitsTitle: 'Логиты',
+    logitsHint: 'кликни по столбцу — изменить',
+    probsTitle: 'Вероятности',
+    fillSection: 'Заполнение',
+    rangeFrom: 'от',
+    rangeTo: 'до',
+    btnRandom: 'Случайные',
+    btnRandomTitle: 'Случайные значения в указанном диапазоне',
+    stepLabel: 'шаг',
+    btnSteps: 'Ступеньки',
+    btnStepsTitle: 'Логиты 1, 1+шаг, 1+2·шаг, … При шаге ln(2)≈0.693 соседние вероятности отличаются в 2 раза.',
+    constLabel: 'знач.',
+    btnConst: 'Заполнить',
+    btnConstTitle: 'Заполнить все логиты одинаковым значением',
+    filtersSection: 'Фильтры',
+    editLogit: 'Логит',
+    cancel: 'Отмена',
+    lockScaleTitle: 'Зафиксировать масштаб 0–100%',
+    // Tooltips & dynamic strings
+    chartLogit: 'Логит', // tooltip title prefix on both charts
+  },
+  en: {
+    title: 'Softmax Lab',
+    subtitle: 'logits → temperature → top-k / top-p → probabilities',
+    logitsCount: 'Logits',
+    temperature: 'Temperature',
+    tempResetTitle: 'Reset temperature to 1.00',
+    tempResetAria: 'Reset temperature',
+    logitsTitle: 'Logits',
+    logitsHint: 'click a bar to edit',
+    probsTitle: 'Probabilities',
+    fillSection: 'Fill',
+    rangeFrom: 'from',
+    rangeTo: 'to',
+    btnRandom: 'Random',
+    btnRandomTitle: 'Random values within the given range',
+    stepLabel: 'step',
+    btnSteps: 'Steps',
+    btnStepsTitle: 'Logits 1, 1+step, 1+2·step, … With step ln(2)≈0.693 adjacent probabilities differ by a factor of 2.',
+    constLabel: 'value',
+    btnConst: 'Fill',
+    btnConstTitle: 'Fill all logits with the same value',
+    filtersSection: 'Filters',
+    editLogit: 'Logit',
+    cancel: 'Cancel',
+    lockScaleTitle: 'Lock scale to 0–100%',
+    chartLogit: 'Logit',
+  },
+};
+
+let lang = 'en';
+const t = key => (I18N[lang] && I18N[lang][key]) || key;
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+
+  // Text content
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  // title attribute
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.setAttribute('title', t(el.dataset.i18nTitle));
+  });
+  // aria-label attribute
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  });
+
+  // Active state on lang buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+
+  // Update <title>
+  document.title = t('title');
+
+  // Re-render charts so tooltip labels and probsHint pick up the new language
+  if (typeof render === 'function') render();
+}
+
+// Wire up lang switcher (idempotent, runs immediately because buttons exist by now)
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    lang = btn.dataset.lang;
+    applyI18n();
+  });
+});
+
+/* ---------- State ---------- */
+const state = {
+  logits: [],
+  temperature: 1.0,
+  topkEnabled: false,
+  topk: 10,
+  toppEnabled: false,
+  topp: 0.9,
+  randMin: 0,
+  randMax: 1.5,
+  stepValue: 0.693,
+  constValue: 1,
+  lockScale: false,
+};
+
+/* ---------- Helpers ---------- */
+function randomLogits(n, lo, hi) {
+  if (lo > hi) [lo, hi] = [hi, lo];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(Number((lo + Math.random() * (hi - lo)).toFixed(3)));
+  }
+  return out;
+}
+state.logits = randomLogits(10, 0, 1.5);
+
+/* ---------- Math ---------- */
+function computeProbs() {
+  const L = state.logits;
+  const T = Math.max(state.temperature, 1e-9);
+  const n = L.length;
+  if (n === 0) return [];
+
+  const scaled = L.map(v => v / T);
+  const max = Math.max(...scaled);
+  const exps = scaled.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0) || 1;
+  let probs = exps.map(e => e / sum);
+
+  if (state.topkEnabled) {
+    const k = Math.min(Math.max(1, state.topk | 0), n);
+    const indexed = probs.map((p, i) => ({ p, i }));
+    indexed.sort((a, b) => b.p - a.p);
+    const keep = new Set(indexed.slice(0, k).map(x => x.i));
+    probs = probs.map((p, i) => keep.has(i) ? p : 0);
+  }
+
+  if (state.toppEnabled) {
+    const p_thresh = Math.min(Math.max(0.0001, state.topp), 1);
+    const indexed = probs.map((p, i) => ({ p, i }));
+    indexed.sort((a, b) => b.p - a.p);
+    let cum = 0;
+    const keep = new Set();
+    for (const item of indexed) {
+      keep.add(item.i);
+      cum += item.p;
+      if (cum >= p_thresh) break;
+    }
+    probs = probs.map((p, i) => keep.has(i) ? p : 0);
+  }
+
+  const total = probs.reduce((a, b) => a + b, 0);
+  if (total > 0) probs = probs.map(p => p / total);
+  return probs;
+}
+
+/* ---------- Charts ---------- */
+const ACCENT = '#0a0a0a';
+const ACCENT_PROBS = '#e30613';
+const ACCENT_PROBS_HOVER = '#b00410';
+const ACCENT_HOVER = '#3a3a3a';
+const MUTED = 'rgba(168, 168, 160, 0.5)';
+const MUTED_HOVER = 'rgba(168, 168, 160, 0.75)';
+const GRID = 'rgba(10, 10, 10, 0.08)';
+const TICK = '#0a0a0a';
+
+// At ~10 bars across the full chart width, bars look "full".
+// Cap thickness so 2 logits don't become ridiculously fat blocks.
+const MAX_BAR_THICKNESS = 28; // px
+
+const baseScales = {
+  x: {
+    grid: { display: false },
+    border: { display: false },
+    ticks: {
+      color: TICK,
+      font: { size: 11, weight: '900', family: "'Inter', sans-serif" },
+      maxRotation: 0,
+      autoSkip: true,
+      autoSkipPadding: 12,
+    },
+  },
+  y: {
+    beginAtZero: true,
+    grid: { color: GRID, drawTicks: false },
+    border: { display: false },
+    ticks: {
+      color: TICK,
+      font: { size: 11, weight: '900', family: "'Inter', sans-serif" },
+      padding: 8,
+      maxTicksLimit: 5,
+    },
+  },
+};
+
+const baseTooltip = {
+  backgroundColor: '#0a0a0a',
+  titleColor: '#fff',
+  bodyColor: '#fff',
+  titleFont: { size: 10, weight: '900', family: "'Inter', sans-serif" },
+  bodyFont: { size: 14, weight: '900', family: "'Inter', sans-serif" },
+  padding: 10,
+  cornerRadius: 0,
+  displayColors: false,
+  caretSize: 4,
+  borderWidth: 2,
+  borderColor: '#0a0a0a',
+};
+
+const labelsFor = n => Array.from({ length: n }, (_, i) => String(i + 1));
+
+// Minimum number of slots in the chart; if there are fewer real logits,
+// the rest are rendered as empty (zero, no label) phantom slots so that
+// real bars stay grouped on the left at consistent thickness.
+const MIN_SLOTS = 15;
+
+function paddedLabels(n) {
+  const slots = Math.max(n, MIN_SLOTS);
+  return Array.from({ length: slots }, (_, i) => i < n ? String(i + 1) : '');
+}
+function realCount() { return state.logits.length; }
+function isPhantomIndex(i) { return i >= state.logits.length; }
+
+const logitsCtx = document.getElementById('logitsChart').getContext('2d');
+const logitsChart = new Chart(logitsCtx, {
+  type: 'bar',
+  data: {
+    labels: paddedLabels(state.logits.length),
+    datasets: [{
+      label: 'Логит',
+      data: state.logits,
+      backgroundColor: ACCENT,
+      hoverBackgroundColor: ACCENT_HOVER,
+      borderRadius: 0,
+      borderSkipped: false,
+      categoryPercentage: 0.92,
+      barPercentage: 0.88,
+      maxBarThickness: MAX_BAR_THICKNESS,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300, easing: 'easeOutQuart' },
+    animations: { y: { duration: 300, easing: 'easeOutQuart' } },
+    layout: { padding: { top: 4, right: 4, bottom: 0, left: 0 } },
+    onHover: (e, els) => {
+      const real = els.find(el => el.index < state.logits.length);
+      e.native.target.style.cursor = real ? 'pointer' : 'default';
+    },
+    onClick: (e, els) => {
+      const real = els.find(el => el.index < state.logits.length);
+      if (real) openEdit(real.index);
+    },
+    scales: {
+      ...baseScales,
+      y: { ...baseScales.y, suggestedMax: 1 },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...baseTooltip,
+        filter: item => item.dataIndex < state.logits.length,
+        callbacks: {
+          title: items => (t('chartLogit') + ' № ' + items[0].label).toUpperCase(),
+          label: ctx => ctx.parsed.y.toFixed(3),
+        },
+      },
+    },
+  },
+});
+
+const probsCtx = document.getElementById('probsChart').getContext('2d');
+const probsChart = new Chart(probsCtx, {
+  type: 'bar',
+  data: {
+    labels: paddedLabels(state.logits.length),
+    datasets: [{
+      label: 'Вероятность',
+      data: [],
+      backgroundColor: [],
+      hoverBackgroundColor: [],
+      borderRadius: 0,
+      borderSkipped: false,
+      categoryPercentage: 0.92,
+      barPercentage: 0.88,
+      maxBarThickness: MAX_BAR_THICKNESS,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300, easing: 'easeOutQuart' },
+    animations: { y: { duration: 300, easing: 'easeOutQuart' } },
+    layout: { padding: { top: 4, right: 4, bottom: 0, left: 0 } },
+    scales: {
+      ...baseScales,
+      y: {
+        ...baseScales.y,
+        ticks: {
+          ...baseScales.y.ticks,
+          callback: v => (v * 100).toFixed(0) + '%',
+        },
+      },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...baseTooltip,
+        filter: item => item.dataIndex < state.logits.length,
+        callbacks: {
+          title: items => (t('chartLogit') + ' № ' + items[0].label).toUpperCase(),
+          label: ctx => (ctx.parsed.y * 100).toFixed(2) + '%',
+        },
+      },
+    },
+  },
+});
+
+/* ---------- Render ---------- */
+function render() {
+  const n = state.logits.length;
+  const labels = paddedLabels(n);
+  const slots = labels.length;
+
+  // Pad logits with zeros for phantom slots
+  const paddedLogits = state.logits.slice();
+  while (paddedLogits.length < slots) paddedLogits.push(0);
+  const logitColors = paddedLogits.map((_, i) => i >= n ? 'rgba(0,0,0,0)' : ACCENT);
+  const logitHoverColors = paddedLogits.map((_, i) => i >= n ? 'rgba(0,0,0,0)' : ACCENT_HOVER);
+
+  logitsChart.data.labels = labels;
+  logitsChart.data.datasets[0].data = paddedLogits;
+  logitsChart.data.datasets[0].backgroundColor = logitColors;
+  logitsChart.data.datasets[0].hoverBackgroundColor = logitHoverColors;
+  const maxL = Math.max(...state.logits, 0);
+  logitsChart.options.scales.y.suggestedMax = maxL > 0 ? maxL : 1;
+  logitsChart.update();
+
+  const probs = computeProbs();
+  const paddedProbs = probs.slice();
+  while (paddedProbs.length < slots) paddedProbs.push(0);
+  const colors = paddedProbs.map((p, i) => i >= n ? 'rgba(0,0,0,0)' : (p > 0 ? ACCENT_PROBS : MUTED));
+  const hoverColors = paddedProbs.map((p, i) => i >= n ? 'rgba(0,0,0,0)' : (p > 0 ? ACCENT_PROBS_HOVER : MUTED_HOVER));
+  probsChart.data.labels = labels;
+  probsChart.data.datasets[0].data = paddedProbs;
+  probsChart.data.datasets[0].backgroundColor = colors;
+  probsChart.data.datasets[0].hoverBackgroundColor = hoverColors;
+  probsChart.options.scales.y.max = state.lockScale ? 1 : undefined;
+  probsChart.update();
+
+  const parts = ['softmax(L / ' + state.temperature.toFixed(2) + ')'];
+  if (state.topkEnabled) parts.push('top-k=' + state.topk);
+  if (state.toppEnabled) parts.push('top-p=' + state.topp.toFixed(2));
+  document.getElementById('probsHint').textContent = parts.join(' • ');
+}
+
+/* ---------- Controls ---------- */
+const countSlider = document.getElementById('count');
+const countVal = document.getElementById('countVal');
+const topkValue = document.getElementById('topkValue');
+
+function updateTopkMax() {
+  const n = state.logits.length;
+  topkValue.max = n;
+  if (state.topk > n) {
+    state.topk = n;
+    topkValue.value = n;
+  }
+}
+
+countSlider.addEventListener('input', () => {
+  const newCount = parseInt(countSlider.value, 10);
+  countVal.textContent = newCount;
+  const cur = state.logits.length;
+  if (newCount > cur) {
+    const maxL = Math.max(...state.logits, 0);
+    const fill = maxL > 0 ? Number((maxL / 2).toFixed(3)) : 0;
+    for (let i = cur; i < newCount; i++) state.logits.push(fill);
+  } else if (newCount < cur) {
+    state.logits = state.logits.slice(0, newCount);
+  }
+  updateTopkMax();
+  render();
+});
+
+// Random range inputs
+const randMinInput = document.getElementById('randMin');
+const randMaxInput = document.getElementById('randMax');
+function clampRand(v, fallback) {
+  let n = parseFloat(v);
+  if (isNaN(n)) n = fallback;
+  return Math.min(1000, Math.max(0, n));
+}
+randMinInput.addEventListener('change', () => {
+  state.randMin = Number(clampRand(randMinInput.value, 0).toFixed(3));
+  randMinInput.value = state.randMin;
+});
+randMaxInput.addEventListener('change', () => {
+  state.randMax = Number(clampRand(randMaxInput.value, 1000).toFixed(3));
+  randMaxInput.value = state.randMax;
+});
+
+document.getElementById('btnRandom').addEventListener('click', () => {
+  state.logits = randomLogits(state.logits.length, state.randMin, state.randMax);
+  render();
+});
+document.getElementById('btnSteps').addEventListener('click', () => {
+  // Each next logit is +step higher. At step=ln(2) and T=1, adjacent probabilities differ by a factor of 2.
+  const STEP = state.stepValue;
+  const n = state.logits.length;
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    arr.push(Number((1 + i * STEP).toFixed(3)));
+  }
+  state.logits = arr;
+  render();
+});
+
+const stepValueInput = document.getElementById('stepValue');
+stepValueInput.addEventListener('change', () => {
+  let v = parseFloat(stepValueInput.value);
+  if (isNaN(v)) v = 0.693;
+  v = Math.min(1000, Math.max(0, v));
+  state.stepValue = Number(v.toFixed(3));
+  stepValueInput.value = state.stepValue;
+});
+document.getElementById('btnConst').addEventListener('click', () => {
+  const v = state.constValue;
+  state.logits = state.logits.map(() => v);
+  render();
+});
+
+const constValueInput = document.getElementById('constValue');
+constValueInput.addEventListener('change', () => {
+  let v = parseFloat(constValueInput.value);
+  if (isNaN(v)) v = 1;
+  v = Math.min(1000, Math.max(0, v));
+  state.constValue = Number(v.toFixed(3));
+  constValueInput.value = state.constValue;
+});
+
+// Temperature
+// Slider is mapped non-linearly: position 0..1000 -> temperature using a
+// log mapping so values around 0.5-1.5 get more slider real estate.
+const TEMP_MIN = 0.01;
+const TEMP_MAX = 50.0;
+const tempSlider = document.getElementById('tempSlider');
+const tempVal = document.getElementById('tempVal');
+
+// Override slider range to a normalized [0, 1000] index
+tempSlider.min = 0;
+tempSlider.max = 1000;
+tempSlider.step = 1;
+
+function pos2temp(pos) {
+  const t = pos / 1000; // 0..1
+  const v = TEMP_MIN * Math.pow(TEMP_MAX / TEMP_MIN, t);
+  return Math.round(v * 100) / 100;
+}
+function temp2pos(temp) {
+  const t = Math.log(temp / TEMP_MIN) / Math.log(TEMP_MAX / TEMP_MIN);
+  return Math.round(Math.min(1, Math.max(0, t)) * 1000);
+}
+
+// Initial position
+tempSlider.value = temp2pos(state.temperature);
+tempVal.textContent = state.temperature.toFixed(2);
+
+tempSlider.addEventListener('input', () => {
+  state.temperature = pos2temp(parseInt(tempSlider.value, 10));
+  tempVal.textContent = state.temperature.toFixed(2);
+  render();
+});
+
+// Reset temperature button
+document.getElementById('tempReset').addEventListener('click', () => {
+  state.temperature = 1.0;
+  tempSlider.value = temp2pos(1.0);
+  tempVal.textContent = '1.00';
+  render();
+});
+
+// Top-k
+const topkEnable = document.getElementById('topkEnable');
+const topkRow = document.getElementById('topkRow');
+topkEnable.addEventListener('change', () => {
+  state.topkEnabled = topkEnable.checked;
+  topkRow.classList.toggle('disabled', !state.topkEnabled);
+  topkValue.disabled = !state.topkEnabled;
+  render();
+});
+topkValue.addEventListener('change', () => {
+  let v = parseInt(topkValue.value, 10);
+  if (isNaN(v)) v = 1;
+  v = Math.min(state.logits.length, Math.max(1, v));
+  state.topk = v;
+  topkValue.value = v;
+  render();
+});
+
+// Top-p
+const toppEnable = document.getElementById('toppEnable');
+const toppRow = document.getElementById('toppRow');
+const toppValue = document.getElementById('toppValue');
+toppEnable.addEventListener('change', () => {
+  state.toppEnabled = toppEnable.checked;
+  toppRow.classList.toggle('disabled', !state.toppEnabled);
+  toppValue.disabled = !state.toppEnabled;
+  render();
+});
+toppValue.addEventListener('change', () => {
+  let v = parseFloat(toppValue.value);
+  if (isNaN(v)) v = 0.9;
+  v = Math.min(1, Math.max(0.01, v));
+  state.topp = Number(v.toFixed(2));
+  toppValue.value = state.topp.toFixed(2);
+  render();
+});
+
+// Lock scale toggle
+document.getElementById('lockScale').addEventListener('change', (e) => {
+  state.lockScale = e.target.checked;
+  render();
+});
+
+/* ---------- Edit modal ---------- */
+const overlay = document.getElementById('overlay');
+const editInput = document.getElementById('editInput');
+const editIdxLabel = document.getElementById('editIdx');
+let editingIdx = -1;
+
+function openEdit(idx) {
+  editingIdx = idx;
+  editIdxLabel.textContent = '#' + (idx + 1);
+  editInput.value = state.logits[idx].toFixed(3);
+  overlay.classList.add('show');
+  setTimeout(() => { editInput.focus(); editInput.select(); }, 60);
+}
+function closeEdit() {
+  overlay.classList.remove('show');
+  editingIdx = -1;
+}
+function commitEdit() {
+  if (editingIdx < 0) return;
+  let v = parseFloat(editInput.value);
+  if (isNaN(v)) v = 0;
+  v = Math.min(1000, Math.max(0, v));
+  state.logits[editingIdx] = Number(v.toFixed(3));
+  closeEdit();
+  render();
+}
+document.getElementById('editOk').addEventListener('click', commitEdit);
+document.getElementById('editCancel').addEventListener('click', closeEdit);
+overlay.addEventListener('click', (e) => { if (e.target === overlay) closeEdit(); });
+editInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') commitEdit();
+  if (e.key === 'Escape') closeEdit();
+});
+
+/* ---------- First render ---------- */
+updateTopkMax();
+applyI18n(); // also runs render()
+</script>
+</body>
+</html>
