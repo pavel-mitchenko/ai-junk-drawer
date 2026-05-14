@@ -33,6 +33,16 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 - Don't add frameworks or build tooling without asking.
 - Don't refactor unrelated files.
 
+## Writing docs
+
+When asked to write or edit docs (READMEs, AGENTS.md, comments), keep it short and plain.
+
+- Use simple English. Non-native speakers read these files too — short sentences, common words, no idioms.
+- Don't pad. Skip throat-clearing intros, recaps, and trailing "in summary" lines. If a sentence doesn't add information, delete it.
+- Don't restate what's already documented elsewhere. Link or point to it.
+- No emoji, no decorative headings, no marketing tone. Plain Markdown.
+- Lists and short paragraphs over long prose. One idea per bullet.
+
 ## Subprojects
 
 Subprojects (like `SoftmaxLab/`) can — and should — have their own instruction files when they need them. If a toy has its own conventions, dependencies, quirks, or a more detailed description of its own, document them **inside the subproject**, not here. Keep this central file lean.
