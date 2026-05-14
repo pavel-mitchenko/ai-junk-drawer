@@ -53,10 +53,10 @@ This file (`AGENTS.md`) is the canonical instruction file for AI coding agents �
 
 Claude Code itself looks for `CLAUDE.md`. To avoid duplication, `.claude/CLAUDE.md` is a one-line pointer that imports this file via `@../AGENTS.md`.
 
-Subprojects should follow the same pattern: a subproject-level `AGENTS.md` for the content, and a thin `CLAUDE.md` (either at the subproject root or in `.claude/`) that imports it. The pointer file must contain **only the import line and nothing else** — no `# CLAUDE.md` header, no boilerplate paragraph like "This file provides guidance to Claude Code…". For example, a subproject `CLAUDE.md` placed next to its `AGENTS.md` is exactly:
+Subprojects follow the same pattern: a subproject-level `AGENTS.md` for the content, and a thin `CLAUDE.md` pointer that imports it. The pointer **must** live at `<subproject>/.claude/CLAUDE.md` (not at the subproject root). It must contain **only the import line and nothing else** — no `# CLAUDE.md` header, no boilerplate paragraph like "This file provides guidance to Claude Code…". The pointer is exactly:
 
 ```
-@AGENTS.md
+@../AGENTS.md
 ```
 
 Edit the `AGENTS.md`; leave the pointer alone.
