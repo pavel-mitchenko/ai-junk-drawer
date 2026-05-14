@@ -13,7 +13,7 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 ## Layout
 
 - `index.html` — landing page (Pages entry point).
-- `experiments/` — sandbox for quick spike pages (e.g. `cors-fetch.html`).
+- `Experiments/` — sandbox for quick spike pages (e.g. `cors-fetch.html`).
 - `SoftmaxLab/` — a finished sub-toy.
 
 ## Finished toys
@@ -24,7 +24,7 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 
 - Plain HTML + vanilla JS + inline `<style>`. No build step, no npm install required.
 - Keep new toys self-contained in a single HTML file when possible.
-- For experiments, prefer `experiments/<name>.html`.
+- For experiments, prefer `Experiments/<name>.html`.
 - Code comments are always written in English, regardless of the language used in chat.
 
 ## Working style
