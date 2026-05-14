@@ -33,6 +33,16 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 - Don't add frameworks or build tooling without asking.
 - Don't refactor unrelated files.
 
+## Writing docs
+
+When asked to write or edit docs (READMEs, AGENTS.md, comments), keep it short and plain.
+
+- Use simple English. Non-native speakers read these files too — short sentences, common words, no idioms.
+- Don't pad. Skip throat-clearing intros, recaps, and trailing "in summary" lines. If a sentence doesn't add information, delete it.
+- Don't restate what's already documented elsewhere. Link or point to it.
+- No emoji, no decorative headings, no marketing tone. Plain Markdown.
+- Lists and short paragraphs over long prose. One idea per bullet.
+
 ## Subprojects
 
 Subprojects (like `SoftmaxLab/`) can — and should — have their own instruction files when they need them. If a toy has its own conventions, dependencies, quirks, or a more detailed description of its own, document them **inside the subproject**, not here. Keep this central file lean.
@@ -43,4 +53,10 @@ This file (`AGENTS.md`) is the canonical instruction file for AI coding agents �
 
 Claude Code itself looks for `CLAUDE.md`. To avoid duplication, `.claude/CLAUDE.md` is a one-line pointer that imports this file via `@../AGENTS.md`.
 
-Subprojects should follow the same pattern: a subproject-level `AGENTS.md` for the content, and a thin `.claude/CLAUDE.md` (or root-level `CLAUDE.md`) that imports it. Edit the `AGENTS.md`; leave the pointer alone.
+Subprojects should follow the same pattern: a subproject-level `AGENTS.md` for the content, and a thin `CLAUDE.md` (either at the subproject root or in `.claude/`) that imports it. The pointer file must contain **only the import line and nothing else** — no `# CLAUDE.md` header, no boilerplate paragraph like "This file provides guidance to Claude Code…". For example, a subproject `CLAUDE.md` placed next to its `AGENTS.md` is exactly:
+
+```
+@AGENTS.md
+```
+
+Edit the `AGENTS.md`; leave the pointer alone.
