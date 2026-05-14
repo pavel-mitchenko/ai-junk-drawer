@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CORS fetch test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
+    input { width: 100%; padding: 8px; font-size: 14px; box-sizing: border-box; }
+    button { margin-top: 10px; padding: 8px 16px; font-size: 14px; cursor: pointer; }
+    pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+    .err { color: #b00; }
+    .ok { color: #0a0; }
+    .meta { font-size: 12px; color: #666; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>JSON fetch tester</h1>
+  <label for="url">URL:</label>
+  <input id="url" type="text" placeholder="https://example.com/data.json" value="https://jsonplaceholder.typicode.com/todos/1">
+  <button id="go">Fetch</button>
+  <div class="meta" id="status"></div>
+  <pre id="out"></pre>
+
+  <script>
+    const $url = document.getElementById('url');
+    const $btn = document.getElementById('go');
+    const $out = document.getElementById('out');
+    const $status = document.getElementById('status');
+
+    $btn.addEventListener('click', async () => {
+      const url = $url.value.trim();
+      $out.textContent = '';
+      $status.className = '';
+      $status.textContent = 'Loading...';
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(url);
+        const ms = Math.round(performance.now() - t0);
+        const text = await res.text();
+        let pretty = text;
+        try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+        $status.className = 'ok';
+        $status.textContent = `OK · ${res.status} ${res.statusText} · ${ms} ms · ${res.headers.get('content-type') || 'no content-type'}`;
+        $out.textContent = pretty;
+      } catch (e) {
+        $status.className = 'err';
+        $status.textContent = `Error: ${e.message} (likely CORS — check DevTools → Network)`;
+      }
+    });
+
+    $url.addEventListener('keydown', e => { if (e.key === 'Enter') $btn.click(); });
+  </script>
+</body>
+</html>
