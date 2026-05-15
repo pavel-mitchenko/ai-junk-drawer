@@ -1,5 +1,8 @@
+using System.Text;
 using ChatLab.Cli;
 using ChatLab.Cli.Commands;
+
+Console.OutputEncoding = Encoding.UTF8;
 
 var settings = AppSettings.Load();
 
