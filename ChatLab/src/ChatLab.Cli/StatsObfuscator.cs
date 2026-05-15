@@ -4,7 +4,11 @@ namespace ChatLab.Cli;
 
 public static class StatsObfuscator
 {
-    public static ObfuscatedChatStats Obfuscate(ChatStats stats, RawChatInfo rawChat, double? timeJitterSeconds, double? durationJitterSeconds)
+    public static ObfuscatedChatStats Obfuscate(
+        ChatStats stats,
+        RawChatInfo rawChat,
+        double? timeJitterSeconds,
+        double? durationJitterSeconds)
     {
         if (string.IsNullOrEmpty(rawChat.ChatName))
         {

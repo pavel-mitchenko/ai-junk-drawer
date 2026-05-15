@@ -32,7 +32,10 @@ while (true)
                 await BuildStatsCommand.RunAsync(settings.ExportFolder);
                 break;
             case "3":
-                await ObfuscateCommand.RunAsync(settings.ExportFolder, settings.TimeJitterSeconds, settings.DurationJitterSeconds);
+                await ObfuscateCommand.RunAsync(
+                    settings.ExportFolder,
+                    settings.TimeJitterSeconds,
+                    settings.DurationJitterSeconds);
                 break;
             case "4":
                 await Base64Command.RunAsync();
