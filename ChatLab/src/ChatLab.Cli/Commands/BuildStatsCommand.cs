@@ -1,25 +1,10 @@
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Unicode;
 using ChatLab.Cli.Models.Stats;
 
 namespace ChatLab.Cli.Commands;
 
 public static class BuildStatsCommand
 {
-    private const string StatsFolderName = "stats";
-    private const string RawStatsFileName = "raw.json";
-    private const string RawUsersFileName = "raw-users.json";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        // Default encoder escapes anything non-ASCII (so "Антон" -> "А…").
-        // Allow all Unicode ranges so hand-editable fields like Alias stay readable.
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-    };
-
     public static async Task RunAsync(string exportFolder)
     {
         var resultPath = Path.Combine(exportFolder, TelegramExportReader.ResultFileName);
@@ -30,10 +15,10 @@ public static class BuildStatsCommand
         var (stats, users) = StatsBuilder.Build(export);
         var skipped = nonService - stats.Messages.Count;
 
-        var statsDir = Path.Combine(exportFolder, StatsFolderName);
+        var statsDir = Path.Combine(exportFolder, StatsIO.FolderName);
         Directory.CreateDirectory(statsDir);
 
-        var usersPath = Path.Combine(statsDir, RawUsersFileName);
+        var usersPath = Path.Combine(statsDir, StatsIO.RawUsersFileName);
         var aliases = await ReadAliasesAsync(usersPath);
         foreach (var u in users)
         {
@@ -43,9 +28,9 @@ public static class BuildStatsCommand
             }
         }
 
-        var rawPath = Path.Combine(statsDir, RawStatsFileName);
-        await WriteJsonAsync(rawPath, stats);
-        await WriteJsonAsync(usersPath, users);
+        var rawPath = Path.Combine(statsDir, StatsIO.RawStatsFileName);
+        await StatsIO.WriteAsync(rawPath, stats);
+        await StatsIO.WriteAsync(usersPath, users);
 
         Console.WriteLine($"Source messages:     {totalInput}");
         Console.WriteLine($"  of which non-service: {nonService}");
@@ -73,7 +58,7 @@ public static class BuildStatsCommand
             return new Dictionary<string, string>();
         }
         await using var input = File.OpenRead(usersPath);
-        var existing = await JsonSerializer.DeserializeAsync<List<StatsUser>>(input, JsonOptions);
+        var existing = await JsonSerializer.DeserializeAsync<List<StatsUser>>(input, StatsIO.JsonOptions);
         if (existing is null)
         {
             return new Dictionary<string, string>();
@@ -81,11 +66,5 @@ public static class BuildStatsCommand
         return existing
             .Where(u => !string.IsNullOrEmpty(u.Alias))
             .ToDictionary(u => u.Id, u => u.Alias!);
-    }
-
-    private static async Task WriteJsonAsync<T>(string path, T value)
-    {
-        await using var output = File.Create(path);
-        await JsonSerializer.SerializeAsync(output, value, JsonOptions);
     }
 }

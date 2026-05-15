@@ -1,0 +1,24 @@
+using ChatLab.Cli.Models.Stats;
+
+namespace ChatLab.Cli.Commands;
+
+public static class ObfuscateCommand
+{
+    public static async Task RunAsync(string exportFolder)
+    {
+        var statsDir = Path.Combine(exportFolder, StatsIO.FolderName);
+        var rawPath = Path.Combine(statsDir, StatsIO.RawStatsFileName);
+        var usersPath = Path.Combine(statsDir, StatsIO.RawUsersFileName);
+        var outPath = Path.Combine(statsDir, StatsIO.ObfuscatedStatsFileName);
+
+        var stats = await StatsIO.ReadAsync<ChatStats>(rawPath);
+        var users = await StatsIO.ReadAsync<List<StatsUser>>(usersPath);
+
+        var obfuscated = StatsObfuscator.Obfuscate(stats, users);
+        await StatsIO.WriteAsync(outPath, obfuscated, ignoreNulls: true);
+
+        Console.WriteLine($"Users:  {obfuscated.UsersMapping.Count}");
+        Console.WriteLine($"Items:  {obfuscated.Items.Count}");
+        Console.WriteLine($"Wrote: {outPath}");
+    }
+}

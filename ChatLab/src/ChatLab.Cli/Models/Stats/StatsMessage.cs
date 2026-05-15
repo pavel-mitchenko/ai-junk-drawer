@@ -7,4 +7,8 @@ public sealed class StatsMessage
     public DateTime Date { get; set; }
     public string UserId { get; set; } = string.Empty;
     public string? UserName { get; set; }
+
+    // Concatenation of all text_entities[].text from the source message,
+    // joined by a single space
+    public string? AggregatedText { get; set; }
 }

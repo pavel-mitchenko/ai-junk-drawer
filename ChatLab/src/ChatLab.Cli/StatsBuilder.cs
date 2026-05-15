@@ -22,7 +22,15 @@ public static class StatsBuilder
             throw new InvalidOperationException($"Message {orphan.Id} has type=message but no from_id.");
         }
 
-        var users = realMessages
+        var users = BuildUsers(realMessages);
+        var messages = BuildMessages(realMessages);
+
+        return (new ChatStats { Messages = messages }, users);
+    }
+
+    private static List<StatsUser> BuildUsers(List<TelegramMessage> realMessages)
+    {
+        return realMessages
             .GroupBy(m => m.FromId!)
             .Select(g => new StatsUser
             {
@@ -30,7 +38,10 @@ public static class StatsBuilder
                 Name = g.Select(m => m.From).FirstOrDefault(n => !string.IsNullOrEmpty(n)) ?? string.Empty,
             })
             .ToList();
+    }
 
+    private static List<StatsMessage> BuildMessages(List<TelegramMessage> realMessages)
+    {
         var messages = new List<StatsMessage>();
         foreach (var m in realMessages)
         {
@@ -45,10 +56,12 @@ public static class StatsBuilder
                 Date = m.Date,
                 UserId = m.FromId!,
                 UserName = m.From,
+                AggregatedText = m.TextEntities is { Count: > 0 }
+                    ? string.Join(' ', m.TextEntities.Select(e => e.Text))
+                    : null,
             });
         }
-
-        return (new ChatStats { Messages = messages }, users);
+        return messages;
     }
 
     private static string? ResolveType(TelegramMessage m) => m.MediaType switch
