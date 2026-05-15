@@ -10,7 +10,12 @@ public static class TelegramExportReader
     public static async Task<TelegramExport> LoadAsync(string filePath)
     {
         await using var stream = File.OpenRead(filePath);
-        return await JsonSerializer.DeserializeAsync<TelegramExport>(stream)
+
+        var result =  await JsonSerializer.DeserializeAsync<TelegramExport>(stream)
             ?? throw new InvalidOperationException($"Failed to parse '{filePath}'.");
+
+       // result.Messages = result.Messages.Take(20).ToList();
+
+        return result;
     }
 }
