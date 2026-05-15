@@ -12,6 +12,12 @@ public sealed class AppSettings
     // Null disables time obfuscation entirely.
     public double? TimeJitterSeconds { get; set; }
 
+    // Magnitude, in seconds, of the symmetric jitter applied to voice/video
+    // duration. Standard pass picks uniform [-value, +value]; if the result
+    // is below `value`, a second pass picks uniform [0, +value] instead so
+    // we never drown short messages in noise. Null disables.
+    public double? DurationJitterSeconds { get; set; }
+
     public static AppSettings Load()
     {
         var config = new ConfigurationBuilder()

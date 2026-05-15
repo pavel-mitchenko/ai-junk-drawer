@@ -4,7 +4,11 @@ namespace ChatLab.Cli;
 
 public static class StatsObfuscator
 {
-    public static ObfuscatedChatStats Obfuscate(ChatStats stats, RawChatInfo rawChat, double? timeJitterSeconds)
+    public static ObfuscatedChatStats Obfuscate(
+        ChatStats stats,
+        RawChatInfo rawChat,
+        double? timeJitterSeconds,
+        double? durationJitterSeconds)
     {
         if (string.IsNullOrEmpty(rawChat.ChatName))
         {
@@ -42,7 +46,7 @@ public static class StatsObfuscator
                 UserId = idMapping[m.UserId],
                 UserName = null,
                 AggregatedText = null,
-                DurationSeconds = m.DurationSeconds,
+                DurationSeconds = JitterDuration(m.DurationSeconds, durationJitterSeconds),
             })
             .ToList();
 
@@ -64,5 +68,23 @@ public static class StatsObfuscator
         const double min = 0.1;
         var seconds = min + Random.Shared.NextDouble() * (max - min);
         return date.AddSeconds(seconds);
+    }
+
+    private static int? JitterDuration(int? duration, double? maxSeconds)
+    {
+        if (duration is not int sec || maxSeconds is not double max)
+        {
+            return duration;
+        }
+        // First pass: symmetric noise in [-max, +max].
+        var candidate = sec + (Random.Shared.NextDouble() * 2.0 - 1.0) * max;
+        if (candidate < max)
+        {
+            // Result is so small that the noise would dominate the signal —
+            // redo with a positive-only kick in [0, +max] so we don't end up
+            // with negative or near-zero durations on short messages.
+            candidate = sec + Random.Shared.NextDouble() * max;
+        }
+        return (int)Math.Round(candidate);
     }
 }

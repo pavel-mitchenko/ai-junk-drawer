@@ -43,6 +43,30 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
       throw new InvalidOperationException(...);
   ```
 
+- When a method declaration or a call is too long to read comfortably on one line, put **each parameter / argument on its own line**, indented one level from the method name. Same rule for both declaration and call sites. Don't half-wrap (two args on one line, the rest below).
+
+  ```csharp
+  // good — declaration
+  public static ObfuscatedChatStats Obfuscate(
+      ChatStats stats,
+      RawChatInfo rawChat,
+      double? timeJitterSeconds,
+      double? durationJitterSeconds)
+  {
+      ...
+  }
+
+  // good — call
+  var obfuscated = StatsObfuscator.Obfuscate(
+      stats,
+      rawChat,
+      timeJitterSeconds,
+      durationJitterSeconds);
+
+  // bad
+  public static ObfuscatedChatStats Obfuscate(ChatStats stats, RawChatInfo rawChat, double? timeJitterSeconds, double? durationJitterSeconds)
+  ```
+
 ## Working style
 
 - This is a junk drawer — prioritize getting things working over polish, abstraction, or test coverage.
