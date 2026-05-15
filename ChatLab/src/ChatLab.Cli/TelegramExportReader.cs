@@ -5,6 +5,8 @@ namespace ChatLab.Cli;
 
 public static class TelegramExportReader
 {
+    public const string ResultFileName = "result.json";
+
     public static async Task<TelegramExport> LoadAsync(string filePath)
     {
         await using var stream = File.OpenRead(filePath);

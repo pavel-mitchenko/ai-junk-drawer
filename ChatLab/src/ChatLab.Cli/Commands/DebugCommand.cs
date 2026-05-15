@@ -6,7 +6,7 @@ public static class DebugCommand
 {
     public static async Task RunAsync(string exportFolder)
     {
-        var resultPath = Path.Combine(exportFolder, "result.json");
+        var resultPath = Path.Combine(exportFolder, TelegramExportReader.ResultFileName);
         var export = await TelegramExportReader.LoadAsync(resultPath);
 
         Console.WriteLine($"Messages: {export.Messages.Count}");
