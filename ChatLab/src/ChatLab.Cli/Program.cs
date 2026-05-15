@@ -3,6 +3,7 @@ using ChatLab.Cli;
 using ChatLab.Cli.Commands;
 
 Console.OutputEncoding = Encoding.UTF8;
+Console.InputEncoding = Encoding.UTF8;
 
 var settings = AppSettings.Load();
 
@@ -15,7 +16,8 @@ while (true)
     Console.WriteLine("  1. Debug");
     Console.WriteLine("  2. Build stats");
     Console.WriteLine("  3. Obfuscate");
-    Console.WriteLine("  4. Exit");
+    Console.WriteLine("  4. Base64");
+    Console.WriteLine("  5. Exit");
     Console.Write("> ");
     var input = Console.ReadLine()?.Trim();
 
@@ -33,6 +35,9 @@ while (true)
                 await ObfuscateCommand.RunAsync(settings.ExportFolder);
                 break;
             case "4":
+                await Base64Command.RunAsync();
+                break;
+            case "5":
                 return;
             default:
                 Console.WriteLine($"Unknown command: '{input}'.");
