@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Local-only app settings overrides
 appsettings.Local.json
+/ChatLab/src/ChatLab.Cli/Data
