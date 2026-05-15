@@ -236,11 +236,6 @@
     font-size: 11px; color: var(--muted); text-transform: uppercase;
     letter-spacing: 0.08em; margin-left: 6px;
   }
-  @media (max-width: 540px) {
-    .top-list li { grid-template-columns: 24px 1fr auto; }
-    .top-list .meta { grid-column: 2 / 4; }
-  }
-
   .per-user-grid {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
   }
@@ -384,11 +379,18 @@
     .chart-box.tall { height: 300px; }
     .chart-box.small { height: 160px; }
 
-    /* Top list: rank + content stacked tightly, meta wraps under */
-    .top-list li { grid-template-columns: 24px 1fr auto; padding: 10px; }
-    .top-list .meta { grid-column: 2 / 4; }
+    /* Top list: keep everything on a single row — rank | avatar+name | date
+     * | duration. The 1fr on the date column eats any slack so neither name
+     * nor duration get pushed to a new line. */
+    .top-list li {
+      grid-template-columns: auto auto 1fr auto;
+      gap: 8px;
+      padding: 8px 10px;
+    }
     .top-list .who { font-size: 14px; }
-    .top-list .dur { font-size: 16px; }
+    .top-list .who .avatar { width: 24px; height: 24px; border-width: 1px; }
+    .top-list .meta { font-size: 11px; white-space: nowrap; }
+    .top-list .dur { font-size: 16px; white-space: nowrap; }
 
     /* Fun facts: smaller minimum so 360px width gets two reasonable cols */
     .facts-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
