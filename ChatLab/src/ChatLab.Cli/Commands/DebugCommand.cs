@@ -26,6 +26,22 @@ public static class DebugCommand
             "TextEntities.Type",
             export.Messages.SelectMany(m => m.TextEntities ?? Enumerable.Empty<TelegramTextEntity>())
                            .Select(e => (string?)e.Type));
+
+        PrintDurationSanity("voice_message", export.Messages);
+        PrintDurationSanity("video_message", export.Messages);
+    }
+
+    private static void PrintDurationSanity(string mediaType, IEnumerable<TelegramMessage> messages)
+    {
+        var media = messages.Where(m => m.MediaType == mediaType).ToList();
+        var missing = media.Count(m => m.DurationSeconds is null);
+        var zero = media.Count(m => m.DurationSeconds == 0);
+
+        Console.WriteLine();
+        Console.WriteLine($"{mediaType} duration:");
+        Console.WriteLine($"  total:   {media.Count}");
+        Console.WriteLine($"  missing: {missing}");
+        Console.WriteLine($"  zero:    {zero}");
     }
 
     private static void PrintGroups(string label, IEnumerable<string?> values)

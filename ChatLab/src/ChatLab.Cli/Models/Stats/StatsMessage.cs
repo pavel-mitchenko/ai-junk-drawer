@@ -11,4 +11,7 @@ public sealed class StatsMessage
     // Concatenation of all text_entities[].text from the source message,
     // joined by a single space
     public string? AggregatedText { get; set; }
+
+    // Length in seconds for voice/video messages; null for everything else.
+    public int? DurationSeconds { get; set; }
 }

@@ -59,6 +59,7 @@ public static class StatsBuilder
                 AggregatedText = m.TextEntities is { Count: > 0 }
                     ? string.Join(' ', m.TextEntities.Select(e => e.Text))
                     : null,
+                DurationSeconds = m.DurationSeconds,
             });
         }
         return messages;

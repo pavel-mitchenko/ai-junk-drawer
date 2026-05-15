@@ -35,7 +35,8 @@ public static class StatsObfuscator
                 Date = m.Date,
                 UserId = idMapping[m.UserId],
                 UserName = null,
-                AggregatedText = null
+                AggregatedText = null,
+                DurationSeconds = m.DurationSeconds,
             })
             .ToList();
 
