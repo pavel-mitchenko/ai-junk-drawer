@@ -27,6 +27,22 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 - For experiments, prefer `Experiments/<name>.html`.
 - Code comments are always written in English, regardless of the language used in chat.
 
+## Code style
+
+- Always brace control-flow bodies, even for a single statement. Applies to `if`, `else`, `for`, `foreach`, `while`, `do`, `using` — in any language with C-style braces (C#, JS, TS, etc.).
+
+  ```csharp
+  // good
+  if (orphan is not null)
+  {
+      throw new InvalidOperationException(...);
+  }
+
+  // bad
+  if (orphan is not null)
+      throw new InvalidOperationException(...);
+  ```
+
 ## Working style
 
 - This is a junk drawer — prioritize getting things working over polish, abstraction, or test coverage.
