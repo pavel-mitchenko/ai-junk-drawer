@@ -14,13 +14,17 @@ public static class StatsObfuscator
         }
 
         var idMapping = new Dictionary<string, string>();
-        var usersMapping = new Dictionary<string, string>();
+        var usersMapping = new Dictionary<string, ObfuscatedUser>();
         var counter = 1;
         foreach (var u in users)
         {
             var newId = counter.ToString();
             idMapping[u.Id] = newId;
-            usersMapping[newId] = u.Alias!;
+            usersMapping[newId] = new ObfuscatedUser
+            {
+                Alias = u.Alias,
+                AvatarUri = u.AvatarUri,
+            };
             counter++;
         }
 

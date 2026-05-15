@@ -19,12 +19,13 @@ public static class BuildStatsCommand
         Directory.CreateDirectory(statsDir);
 
         var usersPath = Path.Combine(statsDir, StatsIO.RawUsersFileName);
-        var aliases = await ReadAliasesAsync(usersPath);
+        var existing = await ReadExistingUsersAsync(usersPath);
         foreach (var u in users)
         {
-            if (aliases.TryGetValue(u.Id, out var alias))
+            if (existing.TryGetValue(u.Id, out var prev))
             {
-                u.Alias = alias;
+                u.Alias = prev.Alias;
+                u.AvatarUri = prev.AvatarUri;
             }
         }
 
@@ -51,20 +52,14 @@ public static class BuildStatsCommand
         Console.WriteLine($"Wrote: {usersPath}");
     }
 
-    private static async Task<Dictionary<string, string>> ReadAliasesAsync(string usersPath)
+    private static async Task<Dictionary<string, StatsUser>> ReadExistingUsersAsync(string usersPath)
     {
         if (!File.Exists(usersPath))
         {
-            return new Dictionary<string, string>();
+            return new Dictionary<string, StatsUser>();
         }
         await using var input = File.OpenRead(usersPath);
         var existing = await JsonSerializer.DeserializeAsync<List<StatsUser>>(input, StatsIO.JsonOptions);
-        if (existing is null)
-        {
-            return new Dictionary<string, string>();
-        }
-        return existing
-            .Where(u => !string.IsNullOrEmpty(u.Alias))
-            .ToDictionary(u => u.Id, u => u.Alias!);
+        return existing?.ToDictionary(u => u.Id) ?? new Dictionary<string, StatsUser>();
     }
 }
