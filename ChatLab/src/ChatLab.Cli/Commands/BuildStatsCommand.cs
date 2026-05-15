@@ -18,20 +18,27 @@ public static class BuildStatsCommand
         var statsDir = Path.Combine(exportFolder, StatsIO.FolderName);
         Directory.CreateDirectory(statsDir);
 
-        var usersPath = Path.Combine(statsDir, StatsIO.RawUsersFileName);
-        var existing = await ReadExistingUsersAsync(usersPath);
+        var usersPath = Path.Combine(statsDir, StatsIO.RawChatInfoFileName);
+        var existing = await ReadExistingAsync(usersPath);
+        var existingById = existing.Users.ToDictionary(u => u.Id);
         foreach (var u in users)
         {
-            if (existing.TryGetValue(u.Id, out var prev))
+            if (existingById.TryGetValue(u.Id, out var prev))
             {
                 u.Alias = prev.Alias;
                 u.AvatarUri = prev.AvatarUri;
             }
         }
 
+        var rawChat = new RawChatInfo
+        {
+            ChatName = existing.ChatName,
+            Users = users,
+        };
+
         var rawPath = Path.Combine(statsDir, StatsIO.RawStatsFileName);
         await StatsIO.WriteAsync(rawPath, stats);
-        await StatsIO.WriteAsync(usersPath, users);
+        await StatsIO.WriteAsync(usersPath, rawChat);
 
         Console.WriteLine($"Source messages:     {totalInput}");
         Console.WriteLine($"  of which non-service: {nonService}");
@@ -52,14 +59,14 @@ public static class BuildStatsCommand
         Console.WriteLine($"Wrote: {usersPath}");
     }
 
-    private static async Task<Dictionary<string, StatsUser>> ReadExistingUsersAsync(string usersPath)
+    private static async Task<RawChatInfo> ReadExistingAsync(string usersPath)
     {
         if (!File.Exists(usersPath))
         {
-            return new Dictionary<string, StatsUser>();
+            return new RawChatInfo();
         }
         await using var input = File.OpenRead(usersPath);
-        var existing = await JsonSerializer.DeserializeAsync<List<StatsUser>>(input, StatsIO.JsonOptions);
-        return existing?.ToDictionary(u => u.Id) ?? new Dictionary<string, StatsUser>();
+        var existing = await JsonSerializer.DeserializeAsync<RawChatInfo>(input, StatsIO.JsonOptions);
+        return existing ?? new RawChatInfo();
     }
 }

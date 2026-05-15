@@ -9,7 +9,7 @@ internal static class StatsIO
 {
     public const string FolderName = "stats";
     public const string RawStatsFileName = "raw.json";
-    public const string RawUsersFileName = "raw-users.json";
+    public const string RawChatInfoFileName = "raw-chat-info.json";
     public const string ObfuscatedStatsFileName = "obfuscated-stats.json";
 
     public static readonly JsonSerializerOptions JsonOptions = CreateOptions(ignoreNulls: false);
@@ -35,8 +35,6 @@ internal static class StatsIO
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            // Default encoder escapes anything non-ASCII (so "Антон" -> "А…").
-            // Allow all Unicode ranges so hand-editable fields like Alias stay readable.
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
         };
         if (ignoreNulls)

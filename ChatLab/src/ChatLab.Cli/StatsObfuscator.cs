@@ -4,19 +4,25 @@ namespace ChatLab.Cli;
 
 public static class StatsObfuscator
 {
-    public static ObfuscatedChatStats Obfuscate(ChatStats stats, List<StatsUser> users)
+    public static ObfuscatedChatStats Obfuscate(ChatStats stats, RawChatInfo rawChat)
     {
-        var unaliased = users.FirstOrDefault(u => string.IsNullOrEmpty(u.Alias));
+        if (string.IsNullOrEmpty(rawChat.ChatName))
+        {
+            throw new InvalidOperationException(
+                $"ChatName is empty in {StatsIO.RawChatInfoFileName}.");
+        }
+
+        var unaliased = rawChat.Users.FirstOrDefault(u => string.IsNullOrEmpty(u.Alias));
         if (unaliased is not null)
         {
             throw new InvalidOperationException(
-                $"User '{unaliased.Id}' has no alias filled in {StatsIO.RawUsersFileName}.");
+                $"User '{unaliased.Id}' has no alias filled in {StatsIO.RawChatInfoFileName}.");
         }
 
         var idMapping = new Dictionary<string, string>();
         var usersMapping = new Dictionary<string, ObfuscatedUser>();
         var counter = 1;
-        foreach (var u in users)
+        foreach (var u in rawChat.Users)
         {
             var newId = counter.ToString();
             idMapping[u.Id] = newId;
@@ -42,6 +48,7 @@ public static class StatsObfuscator
 
         return new ObfuscatedChatStats
         {
+            ChatName = rawChat.ChatName,
             Items = items,
             UsersMapping = usersMapping,
         };

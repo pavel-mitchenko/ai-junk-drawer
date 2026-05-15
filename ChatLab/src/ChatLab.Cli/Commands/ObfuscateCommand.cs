@@ -8,13 +8,13 @@ public static class ObfuscateCommand
     {
         var statsDir = Path.Combine(exportFolder, StatsIO.FolderName);
         var rawPath = Path.Combine(statsDir, StatsIO.RawStatsFileName);
-        var usersPath = Path.Combine(statsDir, StatsIO.RawUsersFileName);
+        var usersPath = Path.Combine(statsDir, StatsIO.RawChatInfoFileName);
         var outPath = Path.Combine(statsDir, StatsIO.ObfuscatedStatsFileName);
 
         var stats = await StatsIO.ReadAsync<ChatStats>(rawPath);
-        var users = await StatsIO.ReadAsync<List<StatsUser>>(usersPath);
+        var rawChat = await StatsIO.ReadAsync<RawChatInfo>(usersPath);
 
-        var obfuscated = StatsObfuscator.Obfuscate(stats, users);
+        var obfuscated = StatsObfuscator.Obfuscate(stats, rawChat);
         await StatsIO.WriteAsync(outPath, obfuscated, ignoreNulls: true);
 
         Console.WriteLine($"Users:  {obfuscated.UsersMapping.Count}");
