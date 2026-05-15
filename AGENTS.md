@@ -63,6 +63,8 @@ When asked to write or edit docs (READMEs, AGENTS.md, comments), keep it short a
 
 Subprojects (like `SoftmaxLab/`) can — and should — have their own instruction files when they need them. If a toy has its own conventions, dependencies, quirks, or a more detailed description of its own, document them **inside the subproject**, not here. Keep this central file lean.
 
+The reverse also holds: anything cross-cutting — code style, formatting rules, language conventions that apply to more than one toy — belongs **here**, not in a subproject `AGENTS.md`. If you catch yourself adding the same note to two subproject files, pull it up to this one.
+
 ## `AGENTS.md` vs `CLAUDE.md`
 
 This file (`AGENTS.md`) is the canonical instruction file for AI coding agents — a growing cross-tool convention (Codex, Cursor, Aider, etc. read it).

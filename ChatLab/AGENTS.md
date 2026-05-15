@@ -1,5 +1,7 @@
 # ChatLab
 
+This is a subproject. Put any cross-cutting rule (code style, doc style, working style, public-repo warnings) in `../AGENTS.md`, not here — this file only carries ChatLab-specific notes.
+
 See `README.md` for the one-line description.
 
 ## Layout
