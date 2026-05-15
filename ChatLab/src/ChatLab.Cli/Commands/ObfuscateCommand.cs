@@ -4,7 +4,7 @@ namespace ChatLab.Cli.Commands;
 
 public static class ObfuscateCommand
 {
-    public static async Task RunAsync(string exportFolder)
+    public static async Task RunAsync(string exportFolder, double? timeJitterSeconds)
     {
         var statsDir = Path.Combine(exportFolder, StatsIO.FolderName);
         var rawPath = Path.Combine(statsDir, StatsIO.RawStatsFileName);
@@ -14,7 +14,7 @@ public static class ObfuscateCommand
         var stats = await StatsIO.ReadAsync<ChatStats>(rawPath);
         var rawChat = await StatsIO.ReadAsync<RawChatInfo>(usersPath);
 
-        var obfuscated = StatsObfuscator.Obfuscate(stats, rawChat);
+        var obfuscated = StatsObfuscator.Obfuscate(stats, rawChat, timeJitterSeconds);
         await StatsIO.WriteAsync(outPath, obfuscated, ignoreNulls: true);
 
         Console.WriteLine($"Users:  {obfuscated.UsersMapping.Count}");

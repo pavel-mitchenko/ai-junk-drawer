@@ -7,6 +7,11 @@ public sealed class AppSettings
 {
     public string ExportFolder { get; set; } = string.Empty;
 
+    // Upper bound, in seconds, of the random positive jitter that the
+    // obfuscator adds to each message's timestamp. Range is [0.1, value].
+    // Null disables time obfuscation entirely.
+    public double? TimeJitterSeconds { get; set; }
+
     public static AppSettings Load()
     {
         var config = new ConfigurationBuilder()

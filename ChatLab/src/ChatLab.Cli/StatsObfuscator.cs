@@ -4,7 +4,7 @@ namespace ChatLab.Cli;
 
 public static class StatsObfuscator
 {
-    public static ObfuscatedChatStats Obfuscate(ChatStats stats, RawChatInfo rawChat)
+    public static ObfuscatedChatStats Obfuscate(ChatStats stats, RawChatInfo rawChat, double? timeJitterSeconds)
     {
         if (string.IsNullOrEmpty(rawChat.ChatName))
         {
@@ -38,7 +38,7 @@ public static class StatsObfuscator
             .Select(m => new StatsMessage
             {
                 Type = m.Type,
-                Date = m.Date,
+                Date = Jitter(m.Date, timeJitterSeconds),
                 UserId = idMapping[m.UserId],
                 UserName = null,
                 AggregatedText = null,
@@ -52,5 +52,17 @@ public static class StatsObfuscator
             Items = items,
             UsersMapping = usersMapping,
         };
+    }
+
+    private static DateTime Jitter(DateTime date, double? maxSeconds)
+    {
+        if (maxSeconds is not double max)
+        {
+            return date;
+        }
+        // Positive jitter in the range [0.1, max] seconds, fresh per call.
+        const double min = 0.1;
+        var seconds = min + Random.Shared.NextDouble() * (max - min);
+        return date.AddSeconds(seconds);
     }
 }
