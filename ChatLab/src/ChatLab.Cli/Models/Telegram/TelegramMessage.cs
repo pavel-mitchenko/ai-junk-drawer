@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ChatLab.Cli.Models;
+namespace ChatLab.Cli.Models.Telegram;
 
 // A single entry from the `messages` array in result.json.
 // id/type/date/date_unixtime are always present; everything else is optional.

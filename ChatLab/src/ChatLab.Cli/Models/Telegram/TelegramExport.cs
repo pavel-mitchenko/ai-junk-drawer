@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ChatLab.Cli.Models;
+namespace ChatLab.Cli.Models.Telegram;
 
 // Root shape of Telegram's result.json export.
 public sealed class TelegramExport

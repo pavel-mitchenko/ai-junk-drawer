@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ChatLab.Cli.Models;
+namespace ChatLab.Cli.Models.Telegram;
 
 // One segment from `text_entities` — e.g. plain text, bold, or a text_link.
 public sealed class TelegramTextEntity
