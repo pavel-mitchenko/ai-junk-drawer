@@ -272,7 +272,7 @@
      * neighbouring name cell and the row looks misaligned. */
     white-space: nowrap;
   }
-  table.stats td.name {
+  table.stats td.name .name-inner {
     display: flex; align-items: center; gap: 10px;
   }
   table.stats td.name .avatar { width: 30px; height: 30px; border-width: 2px; }
@@ -1745,12 +1745,19 @@ function renderTable() {
 
     const tdName = document.createElement("td");
     tdName.className = "name";
-    tdName.appendChild(avatarEl(r.id, 30));
+    /* Inner wrapper holds the flex layout so the td itself stays a normal
+     * table-cell. That keeps row-border alignment consistent with sibling
+     * cells — flex on the td directly produced a visible kink in the
+     * row separator. */
+    const nameInner = document.createElement("div");
+    nameInner.className = "name-inner";
+    nameInner.appendChild(avatarEl(r.id, 30));
     const sp = document.createElement("span");
     sp.textContent = r.alias;
     sp.style.fontFamily = "Fraunces, serif";
     sp.style.fontWeight = "600";
-    tdName.appendChild(sp);
+    nameInner.appendChild(sp);
+    tdName.appendChild(nameInner);
     tr.appendChild(tdName);
 
     const mk = (val, key) => {
