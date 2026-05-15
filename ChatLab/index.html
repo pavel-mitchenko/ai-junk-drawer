@@ -723,6 +723,27 @@ function inkColor() { return cssVar("--ink"); }
 function lineColor() { return cssVar("--line"); }
 function mutedColor() { return cssVar("--muted"); }
 
+/* Apply a 2-char hex alpha (e.g. "55" ~ 0.33) to a color string. Works for
+ * both `#rrggbb` (the base palette) and `hsl(h s% l%)` (the auto-generated
+ * extension when there are more users than base colors). The naive `color
+ * + "55"` only works for hex — for HSL it produces an invalid color and
+ * canvas's addColorStop throws. */
+function withAlpha(color, hexAlpha) {
+  if (color.startsWith("#")) {
+    return color + hexAlpha;
+  }
+  const alpha = (parseInt(hexAlpha, 16) / 255).toFixed(3);
+  if (color.startsWith("hsl(") || color.startsWith("hsla(")) {
+    const inner = color.slice(color.indexOf("(") + 1, color.lastIndexOf(")"));
+    return `hsl(${inner} / ${alpha})`;
+  }
+  if (color.startsWith("rgb(") || color.startsWith("rgba(")) {
+    const inner = color.slice(color.indexOf("(") + 1, color.lastIndexOf(")"));
+    return `rgb(${inner} / ${alpha})`;
+  }
+  return color;
+}
+
 /* ============================================================
  * i18n
  * ========================================================== */
@@ -1547,8 +1568,8 @@ function renderPerUserCharts(gran) {
     const color = userColor(id);
     const c2d = canvas.getContext("2d");
     const grad = c2d.createLinearGradient(0, 0, 0, 180);
-    grad.addColorStop(0, color + "55");
-    grad.addColorStop(1, color + "00");
+    grad.addColorStop(0, withAlpha(color, "55"));
+    grad.addColorStop(1, withAlpha(color, "00"));
 
     const opts = commonChartOpts();
     opts.plugins.legend.display = false;
