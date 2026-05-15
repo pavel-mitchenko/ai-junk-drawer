@@ -265,7 +265,13 @@
   table.stats th:hover { color: var(--ink); }
   table.stats th .arrow { opacity: 0.4; margin-left: 4px; font-size: 9px; }
   table.stats th.sorted .arrow { opacity: 1; }
-  table.stats td.num { font-variant-numeric: tabular-nums; }
+  table.stats td.num {
+    font-variant-numeric: tabular-nums;
+    /* Keep the number and its 🏆 on a single line. Without this the trophy
+     * wraps below on narrow viewports, which makes data rows taller than the
+     * neighbouring name cell and the row looks misaligned. */
+    white-space: nowrap;
+  }
   table.stats td.name {
     display: flex; align-items: center; gap: 10px;
   }
