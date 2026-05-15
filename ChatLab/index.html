@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Наш чат в цифрах</title>
+
+<!-- Fonts: editorial serif display + clean grotesque body -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Chart.js + date adapter for time scale -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+
+<style>
+  /* ============ Tokens ============ */
+  :root {
+    --bg: #f3eee5;
+    --bg-2: #ece5d6;
+    --surface: #fbf7ef;
+    --ink: #1c1a17;
+    --ink-2: #4a463f;
+    --muted: #807a6f;
+    --line: #e0d8c6;
+    --accent: #c8553d;
+
+    --radius: 18px;
+    --shadow: 0 1px 0 rgba(28,26,23,0.04), 0 12px 32px -16px rgba(28,26,23,0.18);
+    --shadow-soft: 0 1px 0 rgba(28,26,23,0.03), 0 6px 18px -10px rgba(28,26,23,0.12);
+  }
+  html[data-theme="dark"] {
+    --bg: #14130f;
+    --bg-2: #1a1814;
+    --surface: #1f1d18;
+    --ink: #f3eee5;
+    --ink-2: #cfc8bb;
+    --muted: #8b8478;
+    --line: #2c2920;
+    --accent: #e07a64;
+
+    --shadow: 0 1px 0 rgba(0,0,0,0.3), 0 18px 40px -18px rgba(0,0,0,0.7);
+    --shadow-soft: 0 1px 0 rgba(0,0,0,0.25), 0 8px 22px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Inter Tight", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+
+    /* subtle grain */
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(200,85,61,0.08), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(58,110,165,0.07), transparent 60%);
+    background-attachment: fixed;
+  }
+  html[data-theme="dark"] body {
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(224,122,100,0.10), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(122,167,214,0.08), transparent 60%);
+  }
+
+  .serif { font-family: "Fraunces", "Times New Roman", serif; font-optical-sizing: auto; }
+
+  /* ============ Layout ============ */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 22px 80px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 28px;
+  }
+  .brand {
+    font-family: "Fraunces", serif; font-weight: 800; font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .brand .dot { color: var(--accent); }
+
+  .controls { display: flex; align-items: center; gap: 8px; }
+  .pill {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 10px; display: inline-flex; gap: 4px;
+    box-shadow: var(--shadow-soft);
+  }
+  .pill button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2);
+    padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit;
+    font-weight: 500; transition: background 0.2s, color 0.2s;
+  }
+  .pill button.active { background: var(--ink); color: var(--bg); }
+  .pill button:hover:not(.active) { color: var(--ink); }
+
+  .icon-btn {
+    appearance: none; border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); width: 38px; height: 38px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: var(--shadow-soft); transition: transform 0.15s;
+  }
+  .icon-btn:hover { transform: translateY(-1px); }
+
+  /* ============ Hero ============ */
+  .hero {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 28px; padding: 40px 36px; box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute; right: -80px; top: -80px;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
+    opacity: 0.18; pointer-events: none;
+  }
+  .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.18em; font-size: 11px;
+    color: var(--muted); font-weight: 600;
+  }
+  h1.title {
+    font-family: "Inter Tight", system-ui, sans-serif; font-weight: 700;
+    font-size: clamp(34px, 5.5vw, 58px); line-height: 1.05;
+    margin: 10px 0 6px; letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  h1.title em { font-style: normal; color: inherit; font-weight: inherit; }
+  .hero .period { color: var(--ink-2); font-size: 15px; }
+
+  .hero-grid {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px;
+    margin-top: 28px; align-items: center;
+  }
+  @media (max-width: 800px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
+  }
+  .kpi {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .kpi .v {
+    font-family: "Fraunces", serif; font-weight: 700;
+    font-size: clamp(22px, 2.4vw, 32px);
+    letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .kpi .l { color: var(--muted); font-size: 12px; margin-top: 4px;
+    text-transform: uppercase; letter-spacing: 0.1em; }
+
+  .avatars-row {
+    display: flex; gap: 16px; justify-content: flex-end; flex-wrap: wrap;
+  }
+  @media (max-width: 800px) { .avatars-row { justify-content: flex-start; } }
+  .avatar-card {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .avatar {
+    width: 84px; height: 84px; border-radius: 50%;
+    background: var(--bg-2); border: 3px solid var(--surface);
+    box-shadow: var(--shadow-soft);
+  }
+  .avatar-name {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 15px;
+  }
+  .avatar-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    margin-right: 6px; vertical-align: middle;
+  }
+
+  /* ============ Sections ============ */
+  section.block { margin-top: 44px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  h2 {
+    font-family: "Fraunces", serif; font-weight: 700;
+    font-size: clamp(24px, 3vw, 32px); margin: 0; letter-spacing: -0.01em;
+  }
+  .section-sub { color: var(--muted); font-size: 14px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-soft);
+  }
+  .chart-box { position: relative; height: 320px; }
+  .chart-box.tall { height: 380px; }
+  .chart-box.small { height: 180px; }
+
+  .card-title {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 14px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 14px;
+  }
+
+  .dur-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  @media (max-width: 720px) { .dur-grid { grid-template-columns: 1fr; } }
+
+  .top-list {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .top-list li {
+    display: grid;
+    grid-template-columns: 28px auto 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+  }
+  .top-list .rank {
+    font-family: "Fraunces", serif; font-weight: 700; font-size: 18px;
+    color: var(--muted); text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .top-list .who {
+    display: flex; align-items: center; gap: 10px;
+    font-family: "Fraunces", serif; font-weight: 600;
+  }
+  .top-list .who .avatar { width: 30px; height: 30px; border-width: 2px; }
+  .top-list .meta { color: var(--muted); font-size: 13px; }
+  .top-list .dur {
+    font-family: "Fraunces", serif; font-weight: 700; font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .top-list .kind-badge {
+    font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-left: 6px;
+  }
+  @media (max-width: 540px) {
+    .top-list li { grid-template-columns: 24px 1fr auto; }
+    .top-list .meta { grid-column: 2 / 4; }
+  }
+
+  .per-user-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  }
+  @media (max-width: 720px) { .per-user-grid { grid-template-columns: 1fr; } }
+  .per-user-grid .card .head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .per-user-grid .avatar { width: 36px; height: 36px; border-width: 2px; }
+  .per-user-grid .name { font-family: "Fraunces", serif; font-weight: 600; }
+
+  /* ============ Table ============ */
+  table.stats {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  table.stats th, table.stats td {
+    text-align: left; padding: 14px 12px; border-bottom: 1px solid var(--line);
+  }
+  table.stats th {
+    font-weight: 600; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.08em; font-size: 11px; cursor: pointer; user-select: none;
+  }
+  table.stats th:hover { color: var(--ink); }
+  table.stats th .arrow { opacity: 0.4; margin-left: 4px; font-size: 9px; }
+  table.stats th.sorted .arrow { opacity: 1; }
+  table.stats td.num { font-variant-numeric: tabular-nums; }
+  table.stats td.name {
+    display: flex; align-items: center; gap: 10px;
+  }
+  table.stats td.name .avatar { width: 30px; height: 30px; border-width: 2px; }
+  table.stats .trophy { margin-left: 6px; }
+  .bar-cell { position: relative; }
+  .bar-cell .barfill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: currentColor; opacity: 0.12; border-radius: 4px;
+  }
+  .bar-cell .v { position: relative; z-index: 1; }
+
+  /* ============ Fun facts ============ */
+  .facts-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .fact {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-soft);
+    display: flex; flex-direction: column; gap: 6px; min-height: 130px;
+    position: relative; overflow: hidden;
+  }
+  .fact .emo { font-size: 26px; line-height: 1; }
+  .fact .ftitle {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 14px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .fact .fval {
+    font-family: "Fraunces", serif; font-weight: 700; font-size: 22px;
+    line-height: 1.15; letter-spacing: -0.01em;
+  }
+  .fact .fsub { color: var(--muted); font-size: 13px; }
+
+  /* ============ Fullscreen loader ============ */
+  .fs-loader {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px;
+    /* Smooth fade-out when we hide it via the .hidden class */
+    transition: opacity 0.35s ease;
+  }
+  .fs-loader.hidden { opacity: 0; pointer-events: none; }
+  .fs-spinner {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 3px solid var(--line); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  .fs-text {
+    font-family: "Fraunces", serif; font-weight: 600;
+    font-size: 15px; color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius); padding: 16px; color: var(--ink);
+  }
+
+  footer.bot {
+    margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px; text-align: center;
+  }
+
+  /* ============ Mobile (<= 640px) ============
+   * All rules here live inside a media query so desktop is untouched. */
+  @media (max-width: 640px) {
+    .wrap { padding: 16px 14px 60px; }
+
+    /* Hero compresses */
+    .hero { padding: 24px 18px; border-radius: 22px; }
+    .hero::before { width: 200px; height: 200px; right: -60px; top: -60px; }
+    h1.title { font-size: 30px; line-height: 1.05; }
+    .hero .period { font-size: 13px; }
+    .hero-grid { margin-top: 20px; gap: 22px; }
+
+    .kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .kpi { padding: 12px 14px; }
+    .kpi .v { font-size: 22px; }
+    .kpi .l { font-size: 10px; letter-spacing: 0.08em; }
+
+    .avatars-row { gap: 12px; justify-content: flex-start; }
+    .avatar-card { gap: 6px; }
+    .avatars-row .avatar { width: 56px; height: 56px; border-width: 2px; }
+    .avatar-name { font-size: 13px; }
+
+    /* Section heads: title above, controls below */
+    .section-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+    section.block { margin-top: 32px; }
+    h2 { font-size: 22px; }
+
+    /* Make pills wrap nicely if they get long */
+    .pill { flex-wrap: wrap; }
+    .pill button { padding: 5px 10px; font-size: 13px; }
+
+    /* Tables: enable horizontal scroll inside a wrapper without changing
+     * the desktop layout (the wrapper exists in HTML but is a no-op on wide screens) */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table.stats { min-width: 520px; }
+
+    /* Card chrome tighter */
+    .card { padding: 16px; border-radius: 16px; }
+    .card-title { font-size: 12px; margin-bottom: 10px; }
+
+    /* Charts: a bit shorter to avoid eating the viewport */
+    .chart-box { height: 260px; }
+    .chart-box.tall { height: 300px; }
+    .chart-box.small { height: 160px; }
+
+    /* Top list: rank + content stacked tightly, meta wraps under */
+    .top-list li { grid-template-columns: 24px 1fr auto; padding: 10px; }
+    .top-list .meta { grid-column: 2 / 4; }
+    .top-list .who { font-size: 14px; }
+    .top-list .dur { font-size: 16px; }
+
+    /* Fun facts: smaller minimum so 360px width gets two reasonable cols */
+    .facts-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .fact { padding: 14px; min-height: 110px; }
+    .fact .fval { font-size: 18px; }
+    .fact .fsub { font-size: 12px; }
+  }
+
+  /* End of styles */
+</style>
+</head>
+<body>
+
+<div id="fs-loader" class="fs-loader">
+  <div class="fs-spinner"></div>
+  <div class="fs-text" data-i18n="loading">Загружаем данные…</div>
+</div>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"></div>
+    <div class="controls">
+      <div class="pill" id="lang-switch" role="tablist" aria-label="language">
+        <button data-lang="ru" class="active">RU</button>
+        <button data-lang="en">EN</button>
+      </div>
+      <button class="icon-btn" id="theme-toggle" title="theme" aria-label="theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO (hidden until data is fully loaded) -->
+  <div class="hero" id="hero" style="display:none">
+    <div class="eyebrow" data-i18n="eyebrow">Статистика чата</div>
+    <h1 class="title">
+      <span data-i18n="title_a">Наш чат</span>
+      <em data-i18n="title_b">в цифрах</em>
+    </h1>
+    <div class="period" id="period-line">—</div>
+
+    <div class="hero-grid">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="v" id="kpi-total">—</div>
+          <div class="l" data-i18n="kpi_total">сообщений всего</div>
+        </div>
+        <div class="kpi">
+          <div class="v" id="kpi-days">—</div>
+          <div class="l" data-i18n="kpi_days">активных дней</div>
+        </div>
+        <div class="kpi">
+          <div class="v" id="kpi-span">—</div>
+          <div class="l" data-i18n="kpi_span">длится чат</div>
+        </div>
+        <div class="kpi" id="kpi-voice-card" style="display:none">
+          <div class="v" id="kpi-voice">—</div>
+          <div class="l" data-i18n="kpi_voice_total">голосовых наговорено</div>
+        </div>
+        <div class="kpi" id="kpi-video-card" style="display:none">
+          <div class="v" id="kpi-video">—</div>
+          <div class="l" data-i18n="kpi_video_total">видео наговорено</div>
+        </div>
+      </div>
+      <div class="avatars-row" id="hero-avatars"></div>
+    </div>
+  </div>
+
+  <div id="error" class="error" style="display:none"></div>
+
+  <div id="content" style="display:none">
+
+    <!-- Section 1: overall activity -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s1_title">Активность за всё время</h2>
+          <div class="section-sub" data-i18n="s1_sub">Когда было тихо, а когда — праздник</div>
+        </div>
+        <div class="pill" id="granularity">
+          <button data-g="day" data-i18n="g_day">дни</button>
+          <button data-g="week" class="active" data-i18n="g_week">недели</button>
+          <button data-g="month" data-i18n="g_month">месяцы</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chart-box tall"><canvas id="chart-overall"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Section 2: per user -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s2_title">Каждый по отдельности</h2>
+          <div class="section-sub" data-i18n="s2_sub">Тот же график, но для каждого</div>
+        </div>
+      </div>
+      <div class="per-user-grid" id="per-user-grid"></div>
+    </section>
+
+    <!-- Section 2b: cumulative growth -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="sg_title">График роста</h2>
+          <div class="section-sub" data-i18n="sg_sub">Общее количество сообщений нарастающим итогом</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chart-box tall"><canvas id="chart-growth"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Section 3: counts table -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s3_title">Кто сколько написал</h2>
+          <div class="section-sub" data-i18n="s3_sub">🏆 — рекордсмен в колонке</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+        <table class="stats" id="counts-table">
+          <thead>
+            <tr>
+              <th data-key="alias" data-i18n="col_name">Имя</th>
+              <th data-key="text" class="num" data-i18n="col_text">Текст</th>
+              <th data-key="voice" class="num" data-i18n="col_voice">Голосовые</th>
+              <th data-key="video" class="num" data-i18n="col_video">Видео</th>
+              <th data-key="total" class="num sorted" data-i18n="col_total">Всего</th>
+              <th data-key="share" class="num" data-i18n="col_share">% чата</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: by year -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s4_title">По годам</h2>
+          <div class="section-sub" data-i18n="s4_sub">Сколько сообщений было в каждом году</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chart-box"><canvas id="chart-year"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Section 5: weekday -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s5_title">По дням недели</h2>
+          <div class="section-sub" data-i18n="s5_sub">Любимый день для болтовни</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chart-box"><canvas id="chart-weekday"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Section: voice durations -->
+    <section class="block" id="voice-dur-block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="sv_title">Голосовые: длительности</h2>
+          <div class="section-sub" data-i18n="sv_sub">Кто говорит дольше всех и кто короче всех</div>
+        </div>
+      </div>
+      <div class="dur-grid">
+        <div class="card">
+          <div class="card-title" data-i18n="dur_total">Суммарно наговорил</div>
+          <div class="chart-box"><canvas id="chart-voice-total"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" data-i18n="dur_avg">Средняя длина сообщения</div>
+          <div class="chart-box"><canvas id="chart-voice-avg"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 16px;">
+        <div class="card-title" data-i18n="voice_top">Самые длинные голосовые — топ-5</div>
+        <ol class="top-list" id="top-voice"></ol>
+      </div>
+    </section>
+
+    <!-- Section: video durations -->
+    <section class="block" id="video-dur-block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="svid_title">Видео: длительности</h2>
+          <div class="section-sub" data-i18n="svid_sub">Видеосообщения по участникам</div>
+        </div>
+      </div>
+      <div class="dur-grid">
+        <div class="card">
+          <div class="card-title" data-i18n="dur_total">Суммарно наговорил</div>
+          <div class="chart-box"><canvas id="chart-video-total"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" data-i18n="dur_avg">Средняя длина сообщения</div>
+          <div class="chart-box"><canvas id="chart-video-avg"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: fun facts -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s6_title">Достижения и курьёзы</h2>
+          <div class="section-sub" data-i18n="s6_sub">Маленькие истории, которые рассказывают данные</div>
+        </div>
+      </div>
+      <div class="facts-grid" id="facts-grid"></div>
+    </section>
+
+  </div>
+
+  <footer class="bot">
+    <span data-i18n="footer">Сделано с теплом для четверых.</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+ * Constants & query-param data source
+ * ========================================================== */
+
+/* The data URL is supplied as ?data=<base64url-encoded URL>. We decode it
+ * lazily at boot. If the param is missing we surface a clear error. */
+function decodeBase64Url(s) {
+  /* base64url -> base64: swap - _ back to + /, then pad to a multiple of 4 */
+  let b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = b64.length % 4;
+  if (pad === 2) { b64 += "=="; }
+  else if (pad === 3) { b64 += "="; }
+  else if (pad === 1) { throw new Error("Invalid base64url length"); }
+  /* atob returns a binary string; the encoded payload is a URL (ASCII-only
+   * in practice), but we decode through TextDecoder to be safe with UTF-8. */
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) {
+    bytes[i] = bin.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+function getDataUrlFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("data");
+  if (!raw) {
+    return null;
+  }
+  try {
+    const url = decodeBase64Url(raw).trim();
+    if (!/^https?:\/\//i.test(url)) {
+      throw new Error("Decoded value is not an http(s) URL");
+    }
+    return url;
+  } catch (e) {
+    console.error("Failed to decode ?data parameter:", e);
+    throw new Error("Bad ?data parameter: " + e.message);
+  }
+}
+
+/* User identity is fully dynamic. After loadData(), populate:
+ *   USER_IDS — ordered list of userIds present in usersMapping (or discovered in items)
+ *   USER_COLORS — userId -> hex color (auto-generated palette, theme-aware)
+ *
+ * USER_IDS preserves the insertion order of usersMapping, which is the natural
+ * order the user typed them in. We don't sort. */
+let USER_IDS = [];
+let USER_COLORS = {};
+
+/* Base palette: hand-tuned warm/cool mix. Generated palette extends from this
+ * via HSL interpolation when there are more users than base colors. */
+const BASE_PALETTE_LIGHT = [
+  "#c8553d", "#2f6f57", "#d49a3a", "#3a6ea5",
+  "#8a4a8c", "#3aa39b", "#b76e3c", "#5d7a3a"
+];
+const BASE_PALETTE_DARK = [
+  "#e07a64", "#6dbf9a", "#e8b864", "#7aa7d6",
+  "#b884bd", "#73c9c2", "#dc8d5e", "#9ab86a"
+];
+
+function isDark() {
+  return document.documentElement.getAttribute("data-theme") === "dark";
+}
+
+/* Build a palette of exactly n colors. For n <= base length we just slice;
+ * for larger n we interpolate hue around the wheel to keep things distinct. */
+function buildPalette(n) {
+  const base = isDark() ? BASE_PALETTE_DARK : BASE_PALETTE_LIGHT;
+  if (n <= base.length) {
+    return base.slice(0, n);
+  }
+  const out = base.slice();
+  /* Generate the remainder by stepping the hue uniformly */
+  const need = n - base.length;
+  const sat = isDark() ? 55 : 60;
+  const light = isDark() ? 64 : 50;
+  for (let i = 0; i < need; i++) {
+    const hue = Math.round((360 / need) * i + 23);
+    out.push(`hsl(${hue} ${sat}% ${light}%)`);
+  }
+  return out;
+}
+
+/* Re-assign colors to user ids in current order. Called on init and theme switch. */
+function rebuildPalette() {
+  const palette = buildPalette(USER_IDS.length);
+  USER_COLORS = {};
+  for (let i = 0; i < USER_IDS.length; i++) {
+    USER_COLORS[USER_IDS[i]] = palette[i];
+  }
+}
+
+/* Read a CSS variable color */
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function userColor(id) {
+  return USER_COLORS[id] || cssVar("--accent");
+}
+function inkColor() { return cssVar("--ink"); }
+function lineColor() { return cssVar("--line"); }
+function mutedColor() { return cssVar("--muted"); }
+
+/* ============================================================
+ * i18n
+ * ========================================================== */
+const I18N = {
+  ru: {
+    eyebrow: "Статистика чата",
+    title_a: "Наш чат",
+    title_b: "в цифрах",
+    kpi_total: "сообщений всего",
+    kpi_days: "активных дней",
+    kpi_span: "длится чат",
+    loading: "Загружаем данные…",
+    s1_title: "Активность за всё время",
+    s1_sub: "Когда было тихо, а когда — праздник",
+    g_day: "дни", g_week: "недели", g_month: "месяцы",
+    s2_title: "Каждый по отдельности",
+    s2_sub: "Тот же график, но для каждого",
+    sg_title: "График роста",
+    sg_sub: "Общее количество сообщений нарастающим итогом",
+    growth_total: "Всего",
+    s3_title: "Кто сколько написал",
+    s3_sub: "🏆 — рекордсмен в колонке",
+    col_name: "Имя", col_text: "Текст", col_voice: "Голосовые",
+    col_video: "Видео", col_total: "Всего", col_share: "% чата",
+    kpi_voice_total: "голосовых сообщений",
+    kpi_video_total: "видеосообщений",
+    s4_title: "По годам",
+    s4_sub: "Сколько сообщений было в каждом году",
+    s5_title: "По дням недели",
+    s5_sub: "Любимый день для болтовни",
+    sv_title: "Голосовые сообщения: длительности",
+    sv_sub: "Кто говорит дольше всех и кто короче всех",
+    svid_title: "Видеосообщения: длительности",
+    svid_sub: "Видеосообщения по участникам",
+    dur_total: "Суммарно наговорил",
+    dur_avg: "Средняя длина сообщения",
+    voice_top: "Самые длинные голосовые сообщения — топ-5",
+    dur_no_data: "Нет данных о длительности",
+    kind_voice: "голосовое", kind_video: "видео",
+    s6_title: "Достижения и курьёзы",
+    s6_sub: "Маленькие истории, которые рассказывают данные",
+    footer: "Сделано с теплом.",
+    years: "лет", months: "месяцев", days: "дней",
+    msgs: "сообщ.",
+    weekdays_short: ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
+
+    err_no_data_source: "Не указан источник данных.",
+    err_bad_data_param: "Не удалось разобрать параметр ?data:",
+    err_load_failed: "Не удалось загрузить данные:",
+    err_no_messages: "В данных нет сообщений.",
+
+    /* fact titles */
+    fact_owl_t: "Полуночник", fact_owl_s: "больше всех сообщений с 00:00 до 05:00",
+    fact_early_t: "Ранняя пташка", fact_early_s: "лидер по сообщениям с 05:00 до 08:00",
+    fact_loud_t: "Самый болтливый день", fact_loud_s: "максимум сообщений за один день",
+    fact_streak_t: "Самый длинный стрик", fact_streak_s: "подряд дней с сообщениями",
+    fact_silence_t: "Самое долгое молчание", fact_silence_s: "между двумя сообщениями",
+    fact_voice_t: "Король голосовых", fact_voice_s: "больше всех голосовых",
+    fact_video_t: "Король видео", fact_video_s: "больше всех видео",
+    fact_open_t: "Открывает день", fact_open_s: "чаще пишет первое сообщение в дне",
+    fact_close_t: "Закрывает день", fact_close_s: "чаще пишет последнее сообщение",
+    fact_revive_t: "Возвращает чат к жизни", fact_revive_s: "пишет после ≥ 24 ч тишины",
+    fact_favday_t: "Любимый день чата", fact_favday_s: "когда болтают чаще всего",
+    fact_avgday_t: "Среднее в день", fact_avgday_s: "в активные дни",
+    fact_talk_t: "Самый говорящий", fact_talk_s: "суммарно дольше всех в голосовых и видео",
+    fact_epic_t: "Эпик", fact_epic_s: "самое длинное аудио- или видео-сообщение",
+
+    /* misc */
+    day_word: "день", days_word: "дней", days_word_2: "дня",
+    hour_word: "час", hours_word: "часов", hours_word_2: "часа",
+    on_date: "в день",
+    streak_label: "дней подряд",
+    silence_label: "ч без сообщений"
+  },
+  en: {
+    eyebrow: "Chat statistics",
+    title_a: "Our chat",
+    title_b: "in numbers",
+    kpi_total: "messages total",
+    kpi_days: "active days",
+    kpi_span: "chat span",
+    loading: "Loading data…",
+    s1_title: "Activity over time",
+    s1_sub: "When it was quiet and when it was a party",
+    g_day: "days", g_week: "weeks", g_month: "months",
+    s2_title: "Each one separately",
+    s2_sub: "Same chart, per person",
+    sg_title: "Growth chart",
+    sg_sub: "Cumulative total messages over time",
+    growth_total: "Total",
+    s3_title: "Who sent what",
+    s3_sub: "🏆 marks the column leader",
+    col_name: "Name", col_text: "Text", col_voice: "Voice",
+    col_video: "Video", col_total: "Total", col_share: "% of chat",
+    kpi_voice_total: "voice messages",
+    kpi_video_total: "video messages",
+    s4_title: "By year",
+    s4_sub: "How many messages each year",
+    s5_title: "By day of week",
+    s5_sub: "Favorite day to talk",
+    sv_title: "Voice messages: durations",
+    sv_sub: "Who talks the most and who keeps it short",
+    svid_title: "Video messages: durations",
+    svid_sub: "Video messages by participant",
+    dur_total: "Total time spoken",
+    dur_avg: "Average message length",
+    voice_top: "Longest voice messages — top 5",
+    dur_no_data: "No duration data",
+    kind_voice: "voice", kind_video: "video",
+    s6_title: "Achievements & curiosities",
+    s6_sub: "Tiny stories the data tells",
+    footer: "Made with care.",
+    years: "yrs", months: "mo", days: "days",
+    msgs: "msgs",
+    weekdays_short: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+
+    err_no_data_source: "No data source specified.",
+    err_bad_data_param: "Failed to parse ?data parameter:",
+    err_load_failed: "Failed to load data:",
+    err_no_messages: "Data has no messages.",
+
+    fact_owl_t: "Night owl", fact_owl_s: "most messages between 00:00 and 05:00",
+    fact_early_t: "Early bird", fact_early_s: "leader from 05:00 to 08:00",
+    fact_loud_t: "Loudest day", fact_loud_s: "most messages in a single day",
+    fact_streak_t: "Longest streak", fact_streak_s: "consecutive active days",
+    fact_silence_t: "Longest silence", fact_silence_s: "between two messages",
+    fact_voice_t: "Voice champion", fact_voice_s: "most voice messages",
+    fact_video_t: "Video champion", fact_video_s: "most video messages",
+    fact_open_t: "Day opener", fact_open_s: "most often writes the first message of the day",
+    fact_close_t: "Day closer", fact_close_s: "most often writes the last message of the day",
+    fact_revive_t: "Chat reviver", fact_revive_s: "writes after ≥ 24 h of silence",
+    fact_favday_t: "Favorite day", fact_favday_s: "when you chat the most",
+    fact_avgday_t: "Per active day", fact_avgday_s: "average messages",
+    fact_talk_t: "Top talker", fact_talk_s: "longest total time across voice & video",
+    fact_epic_t: "Epic", fact_epic_s: "single longest voice or video message",
+
+    day_word: "day", days_word: "days", days_word_2: "days",
+    hour_word: "hour", hours_word: "hours", hours_word_2: "hours",
+    on_date: "on",
+    streak_label: "days in a row",
+    silence_label: "h of silence"
+  }
+};
+
+let LANG = "ru";
+function t(key) { return I18N[LANG][key] || key; }
+
+/* Russian plural helper */
+function pluralRu(n, one, few, many) {
+  const a = Math.abs(n) % 100;
+  const b = a % 10;
+  if (a > 10 && a < 20) { return many; }
+  if (b > 1 && b < 5) { return few; }
+  if (b === 1) { return one; }
+  return many;
+}
+function fmtDuration(ms) {
+  const totalDays = Math.floor(ms / 86400000);
+  const years = Math.floor(totalDays / 365);
+  const months = Math.floor((totalDays % 365) / 30);
+  const days = totalDays - years * 365 - months * 30;
+  if (LANG === "ru") {
+    const parts = [];
+    if (years > 0) { parts.push(years + " " + pluralRu(years, "год", "года", "лет")); }
+    if (months > 0) { parts.push(months + " " + pluralRu(months, "месяц", "месяца", "месяцев")); }
+    if (years === 0 && days > 0) { parts.push(days + " " + pluralRu(days, "день", "дня", "дней")); }
+    return parts.join(" ") || "0";
+  } else {
+    const parts = [];
+    if (years > 0) { parts.push(years + " yr" + (years !== 1 ? "s" : "")); }
+    if (months > 0) { parts.push(months + " mo"); }
+    if (years === 0 && days > 0) { parts.push(days + " day" + (days !== 1 ? "s" : "")); }
+    return parts.join(" ") || "0";
+  }
+}
+function fmtNum(n) {
+  return n.toLocaleString(LANG === "ru" ? "ru-RU" : "en-US");
+}
+function fmtDate(d) {
+  const opt = { year: "numeric", month: "long", day: "numeric" };
+  return d.toLocaleDateString(LANG === "ru" ? "ru-RU" : "en-US", opt);
+}
+/* HTML-escape for any user-controlled string we need to interpolate into
+ * innerHTML. The viewer accepts an arbitrary ?data= URL, so aliases coming
+ * out of usersMapping cannot be trusted. */
+function esc(s) {
+  if (s == null) { return ""; }
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/* ============================================================
+ * Avatars: load per-user avatarUri, mask into a circle on canvas.
+ * If avatarUri is missing/empty or fails to load, the user gets a neutral
+ * "unknown" circle with a question mark.
+ * ========================================================== */
+const avatarCache = {}; // userId -> dataURL (or null if no image available)
+
+/* Load a single avatar URL and produce a round-clipped data URL.
+ * Resolves with the data URL on success, null on any failure (network, CORS,
+ * decode error, etc.). Never rejects — callers fall back to "?". */
+function loadOneAvatar(url) {
+  return new Promise((resolve) => {
+    if (!url || typeof url !== "string") {
+      resolve(null);
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = 200;
+        c.height = 200;
+        const ctx = c.getContext("2d");
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(100, 100, 100, 0, Math.PI * 2);
+        ctx.clip();
+        /* Fit the source into the 200x200 destination, cropping to square if
+         * the source isn't already square. */
+        const sw = img.naturalWidth;
+        const sh = img.naturalHeight;
+        const side = Math.min(sw, sh);
+        const sx = (sw - side) / 2;
+        const sy = (sh - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, 200, 200);
+        ctx.restore();
+        resolve(c.toDataURL("image/png"));
+      } catch (e) {
+        /* CORS-tainted canvas: toDataURL throws SecurityError. */
+        console.warn("Avatar canvas tainted for", url, e);
+        resolve(null);
+      }
+    };
+    img.onerror = () => {
+      console.warn("Avatar failed to load:", url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+/* Load all avatars in parallel based on usersMapping. */
+async function loadAvatars() {
+  const mapping = RAW.usersMapping || {};
+  const tasks = USER_IDS.map(async (id) => {
+    const uri = mapping[id]?.avatarUri;
+    const result = await loadOneAvatar(uri);
+    avatarCache[id] = result;
+  });
+  await Promise.all(tasks);
+}
+
+/* Build an avatar element. Either the loaded image, or a neutral "?" circle.
+ * The "?" circle is deliberately not user-colored — we don't want it to look
+ * like a real identity, just a clear placeholder. */
+function avatarEl(id, sizePx) {
+  const dataUrl = avatarCache[id];
+  if (dataUrl) {
+    const el = document.createElement("img");
+    el.className = "avatar";
+    el.src = dataUrl;
+    el.alt = "";
+    el.style.width = sizePx + "px";
+    el.style.height = sizePx + "px";
+    return el;
+  }
+  /* Unknown / failed avatar: subdued background, big "?" */
+  const el = document.createElement("div");
+  el.className = "avatar avatar-unknown";
+  el.style.width = sizePx + "px";
+  el.style.height = sizePx + "px";
+  el.style.background = "var(--bg-2)";
+  el.style.border = "1px solid var(--line)";
+  el.style.display = "flex";
+  el.style.alignItems = "center";
+  el.style.justifyContent = "center";
+  el.style.color = "var(--muted)";
+  el.style.fontFamily = "Fraunces, serif";
+  el.style.fontWeight = "700";
+  el.style.fontSize = Math.max(12, Math.round(sizePx * 0.5)) + "px";
+  el.textContent = "?";
+  return el;
+}
+
+/* ============================================================
+ * Data load + aggregation
+ * ========================================================== */
+let RAW = null;
+let AGG = null;
+
+async function loadData(url) {
+  /* Default cache mode so an updated JSON at the same URL is picked up on the
+   * next visit; force-cache would pin viewers to the first version forever. */
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error("HTTP " + resp.status);
+  }
+  RAW = await resp.json();
+}
+
+function aggregate() {
+  const items = RAW.items;
+  const users = RAW.usersMapping;
+
+  /* parse dates once */
+  const parsed = new Array(items.length);
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    /* JSON keys can be camelCase or PascalCase; accept both for the duration field */
+    const dur = it.durationSeconds ?? it.DurationSeconds ?? null;
+    parsed[i] = {
+      type: it.type,
+      userId: it.userId,
+      ts: new Date(it.date).getTime(),
+      date: new Date(it.date),
+      dur: typeof dur === "number" ? dur : null
+    };
+  }
+  parsed.sort((a, b) => a.ts - b.ts);
+
+  const minDate = parsed[0].date;
+  const maxDate = parsed[parsed.length - 1].date;
+
+  /* per-user counts */
+  const counts = {};
+  for (const id of USER_IDS) {
+    counts[id] = { alias: users[id]?.alias || id, text: 0, voice: 0, video: 0, total: 0 };
+  }
+  /* hour bucket: 24, weekday: 7 (Mon-based) */
+  const hourAll = new Array(24).fill(0);
+  const weekdayAll = new Array(7).fill(0);
+  const hourByUser = {};
+  for (const id of USER_IDS) {
+    hourByUser[id] = new Array(24).fill(0);
+  }
+
+  /* per-year counts: year (number) -> count, and per user */
+  const yearAll = new Map();
+  const yearByUser = {};
+  for (const id of USER_IDS) {
+    yearByUser[id] = new Map();
+  }
+
+  /* Duration aggregates: per user, per kind ("voice" | "video") */
+  const durAgg = {
+    voice: {}, // userId -> { totalSec, count }
+    video: {}
+  };
+  for (const id of USER_IDS) {
+    durAgg.voice[id] = { totalSec: 0, count: 0 };
+    durAgg.video[id] = { totalSec: 0, count: 0 };
+  }
+  /* All messages with a known duration, kept lean for sorting later */
+  const allWithDuration = [];
+
+  /* per-day counts (key = YYYY-MM-DD), and per-day per-user */
+  const dayKey = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  };
+  const perDay = new Map();           // dayKey -> count
+  const perDayUser = {};              // userId -> Map<dayKey,count>
+  for (const id of USER_IDS) {
+    perDayUser[id] = new Map();
+  }
+
+  /* day -> first/last userId, to compute openers/closers */
+  const firstOfDay = new Map();
+  const lastOfDay = new Map();
+
+  for (const p of parsed) {
+    const u = p.userId;
+    if (!counts[u]) {
+      counts[u] = { alias: users[u]?.alias || u, text: 0, voice: 0, video: 0, total: 0 };
+    }
+    if (p.type === "text") { counts[u].text++; }
+    else if (p.type === "voice_message") { counts[u].voice++; }
+    else if (p.type === "video_message") { counts[u].video++; }
+    counts[u].total++;
+
+    const h = p.date.getHours();
+    hourAll[h]++;
+    if (hourByUser[u]) { hourByUser[u][h]++; }
+
+    /* Year aggregate */
+    const yr = p.date.getFullYear();
+    yearAll.set(yr, (yearAll.get(yr) || 0) + 1);
+    if (yearByUser[u]) {
+      yearByUser[u].set(yr, (yearByUser[u].get(yr) || 0) + 1);
+    }
+
+    /* Duration aggregate (only for voice/video, and only when duration is known) */
+    if (typeof p.dur === "number" && p.dur > 0) {
+      let kind = null;
+      if (p.type === "voice_message") { kind = "voice"; }
+      else if (p.type === "video_message") { kind = "video"; }
+      if (kind && durAgg[kind][u]) {
+        durAgg[kind][u].totalSec += p.dur;
+        durAgg[kind][u].count++;
+        allWithDuration.push({
+          userId: u,
+          kind,
+          sec: p.dur,
+          date: p.date
+        });
+      }
+    }
+
+    /* Convert JS getDay (0=Sun..6=Sat) to Mon=0..Sun=6 */
+    const jsWd = p.date.getDay();
+    const wd = (jsWd + 6) % 7;
+    weekdayAll[wd]++;
+
+    const k = dayKey(p.date);
+    perDay.set(k, (perDay.get(k) || 0) + 1);
+    if (perDayUser[u]) {
+      perDayUser[u].set(k, (perDayUser[u].get(k) || 0) + 1);
+    }
+
+    if (!firstOfDay.has(k)) { firstOfDay.set(k, u); }
+    lastOfDay.set(k, u);
+  }
+
+  /* loudest day */
+  let loudestDay = null, loudestCount = 0;
+  for (const [k, c] of perDay) {
+    if (c > loudestCount) { loudestCount = c; loudestDay = k; }
+  }
+
+  /* longest streak of consecutive days with at least one message */
+  const dayKeysSorted = [...perDay.keys()].sort();
+  let bestStreak = 0, curStreak = 0, prevDay = null;
+  let streakStart = null, streakEnd = null, curStart = null;
+  for (const k of dayKeysSorted) {
+    const d = new Date(k);
+    if (prevDay) {
+      const diff = (d - prevDay) / 86400000;
+      if (diff === 1) {
+        curStreak++;
+      } else {
+        curStreak = 1;
+        curStart = d;
+      }
+    } else {
+      curStreak = 1;
+      curStart = d;
+    }
+    if (curStreak > bestStreak) {
+      bestStreak = curStreak;
+      streakStart = curStart;
+      streakEnd = d;
+    }
+    prevDay = d;
+  }
+
+  /* longest silence between two consecutive messages */
+  let maxGap = 0, gapStart = null, gapEnd = null;
+  for (let i = 1; i < parsed.length; i++) {
+    const gap = parsed[i].ts - parsed[i - 1].ts;
+    if (gap > maxGap) {
+      maxGap = gap;
+      gapStart = parsed[i - 1].date;
+      gapEnd = parsed[i].date;
+    }
+  }
+
+  /* openers / closers tallies */
+  const openerCounts = {}, closerCounts = {};
+  for (const id of USER_IDS) {
+    openerCounts[id] = 0;
+    closerCounts[id] = 0;
+  }
+  for (const u of firstOfDay.values()) {
+    if (openerCounts[u] !== undefined) { openerCounts[u]++; }
+  }
+  for (const u of lastOfDay.values()) {
+    if (closerCounts[u] !== undefined) { closerCounts[u]++; }
+  }
+
+  /* chat revivers: who writes after >= 24h of silence */
+  const SILENCE_MS = 24 * 3600 * 1000;
+  const reviverCounts = {};
+  for (const id of USER_IDS) { reviverCounts[id] = 0; }
+  for (let i = 1; i < parsed.length; i++) {
+    if (parsed[i].ts - parsed[i - 1].ts >= SILENCE_MS) {
+      const u = parsed[i].userId;
+      if (reviverCounts[u] !== undefined) { reviverCounts[u]++; }
+    }
+  }
+
+  /* night-owl (00-05) and early-bird (05-08) per user */
+  const nightCounts = {}, earlyCounts = {};
+  for (const id of USER_IDS) {
+    nightCounts[id] = 0;
+    earlyCounts[id] = 0;
+    for (let h = 0; h < 5; h++) { nightCounts[id] += hourByUser[id][h]; }
+    for (let h = 5; h < 8; h++) { earlyCounts[id] += hourByUser[id][h]; }
+  }
+
+  /* favorite weekday overall */
+  let favWd = 0, favWdC = -1;
+  for (let i = 0; i < 7; i++) {
+    if (weekdayAll[i] > favWdC) { favWdC = weekdayAll[i]; favWd = i; }
+  }
+
+  /* per-day series for buckets */
+  function bucketKey(d, gran) {
+    if (gran === "day") {
+      return dayKey(d);
+    }
+    if (gran === "week") {
+      /* ISO-ish: snap to Monday */
+      const x = new Date(d);
+      const jsWd = x.getDay();
+      const offset = (jsWd + 6) % 7;
+      x.setDate(x.getDate() - offset);
+      x.setHours(0, 0, 0, 0);
+      return dayKey(x);
+    }
+    if (gran === "month") {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}-01`;
+    }
+    return dayKey(d);
+  }
+  function bucketSeries(gran) {
+    /* total + per-user */
+    const total = new Map();
+    const perUser = {};
+    for (const id of USER_IDS) { perUser[id] = new Map(); }
+    for (const p of parsed) {
+      const k = bucketKey(p.date, gran);
+      total.set(k, (total.get(k) || 0) + 1);
+      if (perUser[p.userId]) {
+        perUser[p.userId].set(k, (perUser[p.userId].get(k) || 0) + 1);
+      }
+    }
+    /* fill missing buckets with 0 so the timeline is continuous */
+    const allKeys = [...total.keys()].sort();
+    if (allKeys.length === 0) {
+      return { keys: [], total: [], perUser: {} };
+    }
+    const first = new Date(allKeys[0]);
+    const last = new Date(allKeys[allKeys.length - 1]);
+    const stepDays = gran === "day" ? 1 : gran === "week" ? 7 : null;
+    const keys = [];
+    if (stepDays) {
+      const cur = new Date(first);
+      while (cur <= last) {
+        keys.push(dayKey(cur));
+        cur.setDate(cur.getDate() + stepDays);
+      }
+    } else {
+      /* month */
+      const cur = new Date(first.getFullYear(), first.getMonth(), 1);
+      while (cur <= last) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, "0");
+        keys.push(`${y}-${m}-01`);
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+    const totalArr = keys.map((k) => total.get(k) || 0);
+    const perUserArr = {};
+    for (const id of USER_IDS) {
+      perUserArr[id] = keys.map((k) => perUser[id].get(k) || 0);
+    }
+    return { keys, total: totalArr, perUser: perUserArr };
+  }
+
+  /* Top 5 longest messages overall and per kind */
+  const topAll = [...allWithDuration].sort((a, b) => b.sec - a.sec).slice(0, 5);
+  const topVoice = allWithDuration.filter((x) => x.kind === "voice")
+    .sort((a, b) => b.sec - a.sec).slice(0, 5);
+  const topVideo = allWithDuration.filter((x) => x.kind === "video")
+    .sort((a, b) => b.sec - a.sec).slice(0, 5);
+
+  /* Has duration data at all? */
+  const hasDurations = allWithDuration.length > 0;
+
+  return {
+    parsed,
+    users,
+    counts,
+    minDate, maxDate,
+    activeDays: perDay.size,
+    totalMessages: parsed.length,
+    hourAll, weekdayAll, hourByUser,
+    yearAll, yearByUser,
+    durAgg, topAll, topVoice, topVideo, hasDurations,
+    loudestDay, loudestCount,
+    bestStreak, streakStart, streakEnd,
+    maxGap, gapStart, gapEnd,
+    openerCounts, closerCounts, reviverCounts,
+    nightCounts, earlyCounts,
+    favWd, favWdC,
+    bucketSeries
+  };
+}
+
+/* ============================================================
+ * Renderers
+ * ========================================================== */
+
+function applyI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    el.textContent = t(key);
+  });
+  /* The chat name supplied in the data overrides the localized "Our chat"
+   * fragment in the hero title. We accept the small loss of i18n purity
+   * (the chat name is whatever the user typed, no translation), per the
+   * product decision. */
+  const chatName = (RAW && RAW.chatName) ? RAW.chatName : null;
+  if (chatName) {
+    const span = document.querySelector('[data-i18n="title_a"]');
+    if (span) {
+      span.textContent = chatName;
+    }
+    /* Also reflect it in <title>: "{chatName} в цифрах" / "{chatName} in numbers" */
+    document.title = chatName + " " + t("title_b");
+  } else {
+    document.title = LANG === "ru" ? "Наш чат в цифрах" : "Our chat in numbers";
+  }
+}
+
+function renderHero() {
+  document.getElementById("kpi-total").textContent = fmtNum(AGG.totalMessages);
+  document.getElementById("kpi-days").textContent = fmtNum(AGG.activeDays);
+  document.getElementById("kpi-span").textContent = fmtDuration(AGG.maxDate - AGG.minDate);
+
+  /* Voice / video total durations across the whole chat */
+  let voiceSec = 0, videoSec = 0;
+  for (const id of USER_IDS) {
+    voiceSec += AGG.durAgg.voice[id].totalSec;
+    videoSec += AGG.durAgg.video[id].totalSec;
+  }
+  const voiceCard = document.getElementById("kpi-voice-card");
+  const videoCard = document.getElementById("kpi-video-card");
+  if (voiceSec > 0) {
+    voiceCard.style.display = "";
+    document.getElementById("kpi-voice").textContent = fmtSeconds(voiceSec);
+  } else {
+    voiceCard.style.display = "none";
+  }
+  if (videoSec > 0) {
+    videoCard.style.display = "";
+    document.getElementById("kpi-video").textContent = fmtSeconds(videoSec);
+  } else {
+    videoCard.style.display = "none";
+  }
+
+  document.getElementById("period-line").textContent =
+    fmtDate(AGG.minDate) + "  —  " + fmtDate(AGG.maxDate);
+
+  const row = document.getElementById("hero-avatars");
+  row.innerHTML = "";
+  /* Pick avatar size:
+   *  - desktop: 84
+   *  - mobile (<=640): 56 (already shrunk by CSS, but JS controls the canvas
+   *    size of the avatar image element, so we mirror it here)
+   *  - mobile with many participants (>6): 48 to keep the row from overflowing */
+  let avSize = 84;
+  if (isMobile()) {
+    avSize = USER_IDS.length > 6 ? 48 : 56;
+  }
+  for (const id of USER_IDS) {
+    const card = document.createElement("div");
+    card.className = "avatar-card";
+    card.appendChild(avatarEl(id, avSize));
+    const name = document.createElement("div");
+    name.className = "avatar-name";
+    const dot = document.createElement("span");
+    dot.className = "avatar-dot";
+    dot.style.background = userColor(id);
+    name.appendChild(dot);
+    name.appendChild(document.createTextNode(AGG.users[id]?.alias || id));
+    card.appendChild(name);
+    row.appendChild(card);
+  }
+}
+
+/* Chart instances we keep around for re-render on theme/lang change */
+const charts = {};
+
+/* Mobile detection — single source of truth. Used to tune chart options. */
+const MOBILE_MQ = window.matchMedia("(max-width: 640px)");
+function isMobile() {
+  return MOBILE_MQ.matches;
+}
+
+function destroyChart(key) {
+  if (charts[key]) {
+    charts[key].destroy();
+    charts[key] = null;
+  }
+}
+function destroyAll() {
+  for (const k of Object.keys(charts)) {
+    destroyChart(k);
+  }
+}
+
+function commonChartOpts() {
+  const mobile = isMobile();
+  const tickFont = { family: "Inter Tight", size: mobile ? 10 : 12 };
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: {
+        labels: {
+          color: inkColor(),
+          font: { family: "Inter Tight", size: mobile ? 11 : 12 },
+          boxWidth: mobile ? 10 : 30,
+          padding: mobile ? 8 : 10
+        }
+      },
+      tooltip: {
+        backgroundColor: cssVar("--ink"),
+        titleColor: cssVar("--bg"),
+        bodyColor: cssVar("--bg"),
+        borderColor: cssVar("--ink"),
+        padding: mobile ? 8 : 10,
+        cornerRadius: 10,
+        displayColors: true
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: lineColor(), drawBorder: false },
+        ticks: { color: mutedColor(), font: tickFont, maxTicksLimit: mobile ? 5 : 8 }
+      },
+      y: {
+        grid: { color: lineColor(), drawBorder: false },
+        ticks: { color: mutedColor(), font: tickFont, maxTicksLimit: mobile ? 5 : 8 },
+        beginAtZero: true
+      }
+    }
+  };
+}
+
+function renderOverallChart(gran) {
+  destroyChart("overall");
+  const s = AGG.bucketSeries(gran);
+  const ctx = document.getElementById("chart-overall");
+  /* gradient fill */
+  const c2d = ctx.getContext("2d");
+  const grad = c2d.createLinearGradient(0, 0, 0, 360);
+  const acc = cssVar("--accent");
+  grad.addColorStop(0, acc + "55");
+  grad.addColorStop(1, acc + "00");
+
+  const opts = commonChartOpts();
+  opts.scales.x = {
+    type: "time",
+    time: {
+      unit: gran === "day" ? "month" : gran === "week" ? "month" : "year",
+      tooltipFormat: gran === "month" ? "LLL yyyy" : "dd LLL yyyy"
+    },
+    adapters: { date: { locale: LANG === "ru" ? "ru" : "en" } },
+    grid: { color: lineColor(), drawBorder: false },
+    ticks: { color: mutedColor(), maxRotation: 0 }
+  };
+
+  charts.overall = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: s.keys.map((k) => new Date(k)),
+      datasets: [{
+        label: t("kpi_total"),
+        data: s.total,
+        borderColor: acc,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2
+      }]
+    },
+    options: opts
+  });
+}
+
+function renderPerUserCharts(gran) {
+  const s = AGG.bucketSeries(gran);
+  const grid = document.getElementById("per-user-grid");
+  grid.innerHTML = "";
+
+  for (const id of USER_IDS) {
+    destroyChart("pu_" + id);
+    const card = document.createElement("div");
+    card.className = "card";
+    const head = document.createElement("div");
+    head.className = "head";
+    head.appendChild(avatarEl(id, 36));
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = AGG.users[id]?.alias || id;
+    head.appendChild(name);
+    card.appendChild(head);
+
+    const box = document.createElement("div");
+    box.className = "chart-box small";
+    const canvas = document.createElement("canvas");
+    canvas.id = "pu-canvas-" + id;
+    box.appendChild(canvas);
+    card.appendChild(box);
+    grid.appendChild(card);
+
+    const color = userColor(id);
+    const c2d = canvas.getContext("2d");
+    const grad = c2d.createLinearGradient(0, 0, 0, 180);
+    grad.addColorStop(0, color + "55");
+    grad.addColorStop(1, color + "00");
+
+    const opts = commonChartOpts();
+    opts.plugins.legend.display = false;
+    opts.scales.x = {
+      type: "time",
+      time: { unit: gran === "day" ? "year" : "year",
+              tooltipFormat: gran === "month" ? "LLL yyyy" : "dd LLL yyyy" },
+      adapters: { date: { locale: LANG === "ru" ? "ru" : "en" } },
+      grid: { display: false },
+      ticks: { color: mutedColor(), maxRotation: 0, maxTicksLimit: 4 }
+    };
+    opts.scales.y.ticks.maxTicksLimit = 3;
+
+    charts["pu_" + id] = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: s.keys.map((k) => new Date(k)),
+        datasets: [{
+          data: s.perUser[id],
+          borderColor: color,
+          backgroundColor: grad,
+          fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.6
+        }]
+      },
+      options: opts
+    });
+  }
+}
+
+/* Cumulative growth chart: total messages over time, one curve for the chat
+ * plus one curve per user, all stacked visually but each is independent
+ * (running totals). Anchored to the chat's first and last dates. */
+function renderGrowthChart() {
+  destroyChart("growth");
+  const ctx = document.getElementById("chart-growth");
+
+  /* Reuse daily buckets from the existing bucketSeries() helper, then
+   * accumulate into a running total. */
+  const s = AGG.bucketSeries("day");
+  if (s.keys.length === 0) {
+    return;
+  }
+  const labels = s.keys.map((k) => new Date(k));
+
+  /* Total cumulative */
+  const totalCum = new Array(s.total.length);
+  let acc = 0;
+  for (let i = 0; i < s.total.length; i++) {
+    acc += s.total[i];
+    totalCum[i] = acc;
+  }
+
+  /* Per-user cumulative */
+  const userCum = {};
+  for (const id of USER_IDS) {
+    const arr = s.perUser[id];
+    const out = new Array(arr.length);
+    let a = 0;
+    for (let i = 0; i < arr.length; i++) {
+      a += arr[i];
+      out[i] = a;
+    }
+    userCum[id] = out;
+  }
+
+  const c2d = ctx.getContext("2d");
+  const accentColor = cssVar("--accent");
+  const grad = c2d.createLinearGradient(0, 0, 0, 360);
+  grad.addColorStop(0, accentColor + "44");
+  grad.addColorStop(1, accentColor + "00");
+
+  const datasets = [
+    {
+      label: t("growth_total"),
+      data: totalCum,
+      borderColor: accentColor,
+      backgroundColor: grad,
+      fill: true,
+      tension: 0.25,
+      pointRadius: 0,
+      borderWidth: 2.4,
+      order: 0
+    }
+  ];
+  /* On mobile, hide per-user thin lines — they become a tangle on a narrow
+   * viewport. The accumulated total is the headline, per-user comparison is
+   * already covered by the per-user activity grid above. */
+  if (!isMobile()) {
+    for (const id of USER_IDS) {
+      datasets.push({
+        label: AGG.users[id]?.alias || id,
+        data: userCum[id],
+        borderColor: userColor(id),
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.25,
+        pointRadius: 0,
+        borderWidth: 1.4,
+        order: 1
+      });
+    }
+  }
+
+  const opts = commonChartOpts();
+  opts.scales.x = {
+    type: "time",
+    time: { unit: "month", tooltipFormat: "dd LLL yyyy" },
+    adapters: { date: { locale: LANG === "ru" ? "ru" : "en" } },
+    grid: { color: lineColor(), drawBorder: false },
+    ticks: { color: mutedColor(), maxRotation: 0, maxTicksLimit: isMobile() ? 4 : 8 }
+  };
+  /* Single-series chart on mobile doesn't need its legend; the title above
+   * already says what it shows. */
+  if (isMobile()) {
+    opts.plugins.legend.display = false;
+  }
+  opts.plugins.tooltip.callbacks = {
+    label: (item) => " " + item.dataset.label + ": " + fmtNum(item.parsed.y)
+  };
+
+  charts.growth = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: opts
+  });
+}
+
+function renderTable() {
+  const tbody = document.querySelector("#counts-table tbody");
+  tbody.innerHTML = "";
+
+  /* find leaders per column */
+  const rows = USER_IDS.map((id) => {
+    const c = AGG.counts[id];
+    return {
+      id,
+      alias: c.alias,
+      text: c.text,
+      voice: c.voice,
+      video: c.video,
+      total: c.total,
+      share: AGG.totalMessages > 0 ? (c.total / AGG.totalMessages) * 100 : 0
+    };
+  });
+  const leaders = {};
+  for (const key of ["text", "voice", "video", "total"]) {
+    let max = -1, who = null;
+    for (const r of rows) {
+      if (r[key] > max) { max = r[key]; who = r.id; }
+    }
+    leaders[key] = who;
+  }
+  const maxTotal = Math.max(...rows.map((r) => r.total), 1);
+
+  const sortKey = window.__sortKey || "total";
+  const sortDir = window.__sortDir || "desc";
+  rows.sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (typeof va === "string") {
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortDir === "asc" ? va - vb : vb - va;
+  });
+
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+
+    const tdName = document.createElement("td");
+    tdName.className = "name";
+    tdName.appendChild(avatarEl(r.id, 30));
+    const sp = document.createElement("span");
+    sp.textContent = r.alias;
+    sp.style.fontFamily = "Fraunces, serif";
+    sp.style.fontWeight = "600";
+    tdName.appendChild(sp);
+    tr.appendChild(tdName);
+
+    const mk = (val, key) => {
+      const td = document.createElement("td");
+      td.className = "num";
+      td.style.color = userColor(r.id);
+      td.innerHTML = `<span class="v" style="color:var(--ink)">${fmtNum(val)}</span>` +
+        (leaders[key] === r.id && val > 0 ? `<span class="trophy">🏆</span>` : "");
+      return td;
+    };
+    tr.appendChild(mk(r.text, "text"));
+    tr.appendChild(mk(r.voice, "voice"));
+    tr.appendChild(mk(r.video, "video"));
+
+    /* total with inline bar */
+    const tdTot = document.createElement("td");
+    tdTot.className = "num bar-cell";
+    tdTot.style.color = userColor(r.id);
+    const fill = document.createElement("span");
+    fill.className = "barfill";
+    fill.style.width = ((r.total / maxTotal) * 100) + "%";
+    tdTot.appendChild(fill);
+    const v = document.createElement("span");
+    v.className = "v";
+    v.style.color = "var(--ink)";
+    v.textContent = fmtNum(r.total);
+    tdTot.appendChild(v);
+    if (leaders.total === r.id && r.total > 0) {
+      const tro = document.createElement("span");
+      tro.className = "trophy";
+      tro.textContent = "🏆";
+      tdTot.appendChild(tro);
+    }
+    tr.appendChild(tdTot);
+
+    const tdSh = document.createElement("td");
+    tdSh.className = "num";
+    tdSh.textContent = r.share.toFixed(1) + "%";
+    tr.appendChild(tdSh);
+
+    tbody.appendChild(tr);
+  }
+
+  /* update sort headers */
+  document.querySelectorAll("#counts-table th").forEach((th) => {
+    th.classList.remove("sorted");
+    let arrow = th.querySelector(".arrow");
+    if (!arrow) {
+      arrow = document.createElement("span");
+      arrow.className = "arrow";
+      th.appendChild(arrow);
+    }
+    arrow.textContent = "▾";
+    if (th.dataset.key === sortKey) {
+      th.classList.add("sorted");
+      arrow.textContent = sortDir === "asc" ? "▴" : "▾";
+    }
+  });
+}
+
+function renderYearChart() {
+  destroyChart("year");
+  const ctx = document.getElementById("chart-year");
+  const years = [...AGG.yearAll.keys()].sort((a, b) => a - b);
+  if (years.length === 0) {
+    return;
+  }
+  /* fill the year range continuously, even if a year had zero messages */
+  const minY = years[0], maxY = years[years.length - 1];
+  const labels = [];
+  for (let y = minY; y <= maxY; y++) {
+    labels.push(String(y));
+  }
+
+  const datasets = USER_IDS.map((id) => {
+    const arr = labels.map((y) => AGG.yearByUser[id].get(Number(y)) || 0);
+    return {
+      label: AGG.users[id]?.alias || id,
+      data: arr,
+      backgroundColor: userColor(id),
+      borderRadius: 6,
+      stack: "y"
+    };
+  });
+
+  const opts = commonChartOpts();
+  opts.scales.x.stacked = true;
+  opts.scales.y.stacked = true;
+  opts.scales.x.grid = { display: false };
+
+  charts.year = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets },
+    options: opts
+  });
+}
+
+/* Format seconds into a compact human string per language */
+function fmtSeconds(sec) {
+  sec = Math.round(sec);
+  if (sec <= 0) {
+    return LANG === "ru" ? "0 с" : "0 s";
+  }
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const parts = [];
+  if (LANG === "ru") {
+    if (h > 0) { parts.push(h + " ч"); }
+    if (m > 0) { parts.push(m + " мин"); }
+    if (s > 0 && h === 0) { parts.push(s + " с"); }
+  } else {
+    if (h > 0) { parts.push(h + "h"); }
+    if (m > 0) { parts.push(m + "m"); }
+    if (s > 0 && h === 0) { parts.push(s + "s"); }
+  }
+  return parts.join(" ") || (LANG === "ru" ? "<1 с" : "<1s");
+}
+
+function renderDurations() {
+  /* Voice and video are rendered independently; each section hides itself
+   * if its kind has no data, so a chat with only voice (or only video) still
+   * shows the meaningful half. */
+  renderDurationKind("voice");
+  renderDurationKind("video");
+}
+
+function renderDurationKind(kind) {
+  const blockId = kind === "voice" ? "voice-dur-block" : "video-dur-block";
+  const block = document.getElementById(blockId);
+
+  /* Hide the section entirely when there is no duration data for this kind */
+  const anyDur = USER_IDS.some((id) => AGG.durAgg[kind][id].totalSec > 0);
+  if (!anyDur) {
+    block.style.display = "none";
+    return;
+  }
+  block.style.display = "";
+
+  const labels = USER_IDS.map((id) => AGG.users[id]?.alias || id);
+  const totals = USER_IDS.map((id) => AGG.durAgg[kind][id].totalSec);
+  const avgs = USER_IDS.map((id) => {
+    const a = AGG.durAgg[kind][id];
+    return a.count > 0 ? a.totalSec / a.count : 0;
+  });
+  const colors = USER_IDS.map((id) => userColor(id));
+
+  /* Shared options for a horizontal bar with human-formatted seconds */
+  function makeBarOpts() {
+    const opts = commonChartOpts();
+    opts.indexAxis = "y";
+    opts.plugins.legend.display = false;
+    opts.scales.x.grid = { color: lineColor(), drawBorder: false };
+    opts.scales.x.ticks = {
+      color: mutedColor(),
+      callback: (v) => fmtSeconds(v)
+    };
+    opts.scales.y.grid = { display: false };
+    opts.plugins.tooltip.callbacks = {
+      label: (ctx) => " " + fmtSeconds(ctx.parsed.x)
+    };
+    return opts;
+  }
+
+  const totalCanvas = kind === "voice" ? "chart-voice-total" : "chart-video-total";
+  const avgCanvas   = kind === "voice" ? "chart-voice-avg"   : "chart-video-avg";
+  const totalKey = "dur_" + kind + "_total";
+  const avgKey   = "dur_" + kind + "_avg";
+
+  destroyChart(totalKey);
+  charts[totalKey] = new Chart(document.getElementById(totalCanvas), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data: totals, backgroundColor: colors, borderRadius: 6 }]
+    },
+    options: makeBarOpts()
+  });
+
+  destroyChart(avgKey);
+  charts[avgKey] = new Chart(document.getElementById(avgCanvas), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data: avgs, backgroundColor: colors, borderRadius: 6 }]
+    },
+    options: makeBarOpts()
+  });
+
+  /* Top-5 list — voice only (video messages are capped at 1 minute in some
+   * clients, so the ranking is uninteresting). */
+  if (kind === "voice") {
+    const ol = document.getElementById("top-voice");
+    ol.innerHTML = "";
+    const list = AGG.topVoice;
+    if (list.length === 0) {
+      const li = document.createElement("li");
+      li.style.color = "var(--muted)";
+      li.style.gridTemplateColumns = "1fr";
+      li.textContent = t("dur_no_data");
+      ol.appendChild(li);
+      return;
+    }
+    list.forEach((item, idx) => {
+      const li = document.createElement("li");
+      li.style.borderLeft = "3px solid " + userColor(item.userId);
+
+      const rank = document.createElement("div");
+      rank.className = "rank";
+      rank.textContent = "#" + (idx + 1);
+
+      const who = document.createElement("div");
+      who.className = "who";
+      who.appendChild(avatarEl(item.userId, 30));
+      const nm = document.createElement("span");
+      nm.textContent = AGG.users[item.userId]?.alias || item.userId;
+      who.appendChild(nm);
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = fmtDate(item.date);
+
+      const dur = document.createElement("div");
+      dur.className = "dur";
+      dur.style.color = userColor(item.userId);
+      dur.textContent = fmtSeconds(item.sec);
+
+      li.appendChild(rank);
+      li.appendChild(who);
+      li.appendChild(meta);
+      li.appendChild(dur);
+      ol.appendChild(li);
+    });
+  }
+}
+
+function renderWeekday() {
+  destroyChart("wd");
+  const ctx = document.getElementById("chart-weekday");
+  const labels = I18N[LANG].weekdays_short;
+
+  const datasets = USER_IDS.map((id) => {
+    const arr = new Array(7).fill(0);
+    for (const p of AGG.parsed) {
+      if (p.userId !== id) { continue; }
+      const wd = (p.date.getDay() + 6) % 7;
+      arr[wd]++;
+    }
+    return {
+      label: AGG.users[id]?.alias || id,
+      data: arr,
+      backgroundColor: userColor(id),
+      borderRadius: 6,
+      stack: "w"
+    };
+  });
+
+  const opts = commonChartOpts();
+  opts.scales.x.stacked = true;
+  opts.scales.y.stacked = true;
+  opts.scales.x.grid = { display: false };
+
+  charts.wd = new Chart(ctx, { type: "bar", data: { labels, datasets }, options: opts });
+}
+
+function renderFacts() {
+  const wd = I18N[LANG].weekdays_short;
+
+  function pickLeader(map) {
+    let best = null, bestV = -1;
+    for (const id of USER_IDS) {
+      if ((map[id] || 0) > bestV) { bestV = map[id]; best = id; }
+    }
+    return { id: best, value: bestV };
+  }
+
+  const ownerNight = pickLeader(AGG.nightCounts);
+  const ownerEarly = pickLeader(AGG.earlyCounts);
+  const voiceLeader = pickLeader(Object.fromEntries(
+    USER_IDS.map((id) => [id, AGG.counts[id].voice])
+  ));
+  const videoLeader = pickLeader(Object.fromEntries(
+    USER_IDS.map((id) => [id, AGG.counts[id].video])
+  ));
+  const opener = pickLeader(AGG.openerCounts);
+  const closer = pickLeader(AGG.closerCounts);
+  const reviver = pickLeader(AGG.reviverCounts);
+
+  const loudest = new Date(AGG.loudestDay);
+  const gapHours = Math.round(AGG.maxGap / 3600000);
+  const gapDays = Math.round(AGG.maxGap / 86400000);
+  const avgActive = (AGG.totalMessages / AGG.activeDays).toFixed(1);
+
+  const facts = [
+    {
+      emo: "🌙",
+      title: t("fact_owl_t"),
+      value: ownerNight.id ? AGG.users[ownerNight.id]?.alias : "—",
+      sub: t("fact_owl_s") + " · " + fmtNum(ownerNight.value) + " " + t("msgs"),
+      color: ownerNight.id ? userColor(ownerNight.id) : null
+    },
+    {
+      emo: "🌅",
+      title: t("fact_early_t"),
+      value: ownerEarly.id ? AGG.users[ownerEarly.id]?.alias : "—",
+      sub: t("fact_early_s") + " · " + fmtNum(ownerEarly.value) + " " + t("msgs"),
+      color: ownerEarly.id ? userColor(ownerEarly.id) : null
+    },
+    {
+      emo: "🔥",
+      title: t("fact_loud_t"),
+      value: fmtNum(AGG.loudestCount) + " " + t("msgs"),
+      sub: t("on_date") + " " + fmtDate(loudest)
+    },
+    {
+      emo: "💬",
+      title: t("fact_streak_t"),
+      value: fmtNum(AGG.bestStreak) + " " + t("streak_label"),
+      sub: AGG.streakStart ? (fmtDate(AGG.streakStart) + " — " + fmtDate(AGG.streakEnd)) : ""
+    },
+    {
+      emo: "🤐",
+      title: t("fact_silence_t"),
+      value: gapDays >= 2 ? (fmtNum(gapDays) + " " + (LANG === "ru" ? pluralRu(gapDays, "день","дня","дней") : (gapDays === 1 ? "day" : "days")))
+                          : (fmtNum(gapHours) + " " + t("silence_label")),
+      sub: AGG.gapStart ? (fmtDate(AGG.gapStart) + " → " + fmtDate(AGG.gapEnd)) : ""
+    },
+    {
+      emo: "🎤",
+      title: t("fact_voice_t"),
+      value: voiceLeader.id && voiceLeader.value > 0 ? AGG.users[voiceLeader.id]?.alias : "—",
+      sub: voiceLeader.value > 0 ? (fmtNum(voiceLeader.value) + " " + t("msgs")) : "",
+      color: voiceLeader.id && voiceLeader.value > 0 ? userColor(voiceLeader.id) : null
+    },
+    {
+      emo: "🎥",
+      title: t("fact_video_t"),
+      value: videoLeader.id && videoLeader.value > 0 ? AGG.users[videoLeader.id]?.alias : "—",
+      sub: videoLeader.value > 0 ? (fmtNum(videoLeader.value) + " " + t("msgs")) : "",
+      color: videoLeader.id && videoLeader.value > 0 ? userColor(videoLeader.id) : null
+    },
+    {
+      emo: "👋",
+      title: t("fact_open_t"),
+      value: opener.id ? AGG.users[opener.id]?.alias : "—",
+      sub: t("fact_open_s") + " · " + fmtNum(opener.value) + " " + t("days"),
+      color: opener.id ? userColor(opener.id) : null
+    },
+    {
+      emo: "🌃",
+      title: t("fact_close_t"),
+      value: closer.id ? AGG.users[closer.id]?.alias : "—",
+      sub: t("fact_close_s") + " · " + fmtNum(closer.value) + " " + t("days"),
+      color: closer.id ? userColor(closer.id) : null
+    },
+    {
+      emo: "🪄",
+      title: t("fact_revive_t"),
+      value: reviver.id ? AGG.users[reviver.id]?.alias : "—",
+      sub: t("fact_revive_s") + " · " + fmtNum(reviver.value),
+      color: reviver.id ? userColor(reviver.id) : null
+    },
+    {
+      emo: "📅",
+      title: t("fact_favday_t"),
+      value: wd[AGG.favWd],
+      sub: fmtNum(AGG.favWdC) + " " + t("msgs")
+    },
+    {
+      emo: "📈",
+      title: t("fact_avgday_t"),
+      value: avgActive + " " + t("msgs"),
+      sub: t("fact_avgday_s")
+    }
+  ];
+
+  /* Add duration-based facts only when we have any duration data */
+  if (AGG.hasDurations) {
+    /* "Top talker": user with the largest combined voice + video total seconds */
+    let talkBest = null, talkSec = -1;
+    for (const id of USER_IDS) {
+      const s = AGG.durAgg.voice[id].totalSec + AGG.durAgg.video[id].totalSec;
+      if (s > talkSec) { talkSec = s; talkBest = id; }
+    }
+    if (talkBest && talkSec > 0) {
+      facts.push({
+        emo: "🗣️",
+        title: t("fact_talk_t"),
+        value: AGG.users[talkBest]?.alias,
+        sub: t("fact_talk_s") + " · " + fmtSeconds(talkSec),
+        color: userColor(talkBest)
+      });
+    }
+
+    /* "Epic": single longest voice or video message overall */
+    if (AGG.topAll.length > 0) {
+      const e = AGG.topAll[0];
+      const kindLabel = e.kind === "voice" ? t("kind_voice") : t("kind_video");
+      facts.push({
+        emo: "🏔️",
+        title: t("fact_epic_t"),
+        value: fmtSeconds(e.sec),
+        sub: (AGG.users[e.userId]?.alias || e.userId) + " · " + kindLabel + " · " + fmtDate(e.date),
+        color: userColor(e.userId)
+      });
+    }
+  }
+
+  const grid = document.getElementById("facts-grid");
+  grid.innerHTML = "";
+  for (const f of facts) {
+    const el = document.createElement("div");
+    el.className = "fact";
+    if (f.color) {
+      el.style.borderLeft = "3px solid " + f.color;
+    }
+    el.innerHTML = `
+      <div class="emo">${f.emo}</div>
+      <div class="ftitle">${f.title}</div>
+      <div class="fval">${esc(f.value) || "—"}</div>
+      <div class="fsub">${esc(f.sub)}</div>
+    `;
+    grid.appendChild(el);
+  }
+}
+
+/* ============================================================
+ * Wire up controls
+ * ========================================================== */
+let CUR_GRAN = "week";
+
+function rerenderAll() {
+  applyI18n();
+  renderHero();
+  renderOverallChart(CUR_GRAN);
+  renderPerUserCharts(CUR_GRAN);
+  renderGrowthChart();
+  renderTable();
+  renderYearChart();
+  renderWeekday();
+  renderDurations();
+  renderFacts();
+}
+
+/* Re-apply translations for "shell" elements (header, loader, error banner)
+ * — anything that should react to language changes even when the data hasn't
+ * loaded yet. Safe to call without RAW. */
+function applyShellI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    el.textContent = t(key);
+  });
+  /* Re-render the current error message if it's visible, since we stored
+   * a pre-built localized string when the error was raised. */
+  const errEl = document.getElementById("error");
+  if (errEl && errEl.style.display !== "none" && errEl.dataset.errKind) {
+    renderErrorMessage(errEl.dataset.errKind, errEl.dataset.errDetail || "");
+  }
+}
+
+/* Bindings that must work regardless of whether data loaded successfully —
+ * language, theme. Called once at boot, before any data work. */
+function bindShellControls() {
+  document.querySelectorAll("#lang-switch button").forEach((b) => {
+    b.addEventListener("click", () => {
+      const l = b.dataset.lang;
+      if (l === LANG) { return; }
+      LANG = l;
+      document.querySelectorAll("#lang-switch button").forEach((x) => {
+        x.classList.toggle("active", x.dataset.lang === LANG);
+      });
+      if (RAW) {
+        rerenderAll();
+      } else {
+        applyShellI18n();
+      }
+    });
+  });
+
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
+    if (RAW) {
+      rebuildPalette();
+      rerenderAll();
+    }
+  });
+}
+
+function bindControls() {
+  /* granularity */
+  document.querySelectorAll("#granularity button").forEach((b) => {
+    b.addEventListener("click", () => {
+      const g = b.dataset.g;
+      if (g === CUR_GRAN) { return; }
+      CUR_GRAN = g;
+      document.querySelectorAll("#granularity button").forEach((x) => {
+        x.classList.toggle("active", x.dataset.g === CUR_GRAN);
+      });
+      renderOverallChart(CUR_GRAN);
+      renderPerUserCharts(CUR_GRAN);
+    });
+  });
+
+  /* table sort */
+  document.querySelectorAll("#counts-table th").forEach((th) => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.key;
+      if (window.__sortKey === k) {
+        window.__sortDir = window.__sortDir === "asc" ? "desc" : "asc";
+      } else {
+        window.__sortKey = k;
+        window.__sortDir = k === "alias" ? "asc" : "desc";
+      }
+      renderTable();
+    });
+  });
+}
+
+/* Discover the canonical USER_IDS list. Use the order of usersMapping if it
+ * exists (object key order is preserved by V8 for string keys that aren't
+ * pure integers — sequential "1","2",... keep insertion order in practice
+ * but to be safe we use Object.keys). Then append any userIds found in items
+ * that weren't in the mapping. */
+function deriveUserIds() {
+  const mapping = RAW.usersMapping || {};
+  const seen = new Set();
+  const out = [];
+  for (const k of Object.keys(mapping)) {
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(k);
+    }
+  }
+  for (const it of (RAW.items || [])) {
+    const k = String(it.userId);
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(k);
+      /* If the user was missing from mapping, synthesize a stub so rendering
+       * can still display a name. */
+      if (!mapping[k]) {
+        mapping[k] = { alias: "User " + k, avatarUri: "" };
+      }
+    }
+  }
+  RAW.usersMapping = mapping;
+  return out;
+}
+
+/* ============================================================
+ * Boot
+ * ========================================================== */
+/* Render the error banner from a structured kind + detail, so language
+ * changes can re-translate it later via applyShellI18n. */
+function renderErrorMessage(kind, detail) {
+  const errEl = document.getElementById("error");
+  errEl.style.display = "";
+  errEl.dataset.errKind = kind;
+  errEl.dataset.errDetail = detail || "";
+  let text = t(kind);
+  if (detail) {
+    text += " " + detail;
+  }
+  errEl.textContent = text;
+}
+
+function hideFsLoader() {
+  const fs = document.getElementById("fs-loader");
+  fs.classList.add("hidden");
+  /* Remove from layout after the CSS transition so it can't intercept clicks */
+  setTimeout(() => { fs.style.display = "none"; }, 400);
+}
+
+(async function main() {
+  /* Apply initial i18n to the shell (loader text, lang/theme buttons) and
+   * wire shell controls BEFORE doing any work. This guarantees that the user
+   * can change language and theme even if data loading fails. */
+  applyShellI18n();
+  bindShellControls();
+
+  try {
+    /* Resolve the data source from ?data=<base64url URL>. Two distinct error
+     * kinds: missing param vs malformed param. */
+    let dataUrl;
+    try {
+      dataUrl = getDataUrlFromQuery();
+    } catch (e) {
+      throw { kind: "err_bad_data_param", detail: e.message };
+    }
+    if (!dataUrl) {
+      throw { kind: "err_no_data_source", detail: "" };
+    }
+
+    await loadData(dataUrl);
+    /* Surface a clear "no data" message instead of letting aggregate() blow up
+     * on parsed[0] when items is empty. */
+    if (!Array.isArray(RAW.items) || RAW.items.length === 0) {
+      throw { kind: "err_no_messages", detail: "" };
+    }
+    USER_IDS = deriveUserIds();
+    rebuildPalette();
+    await loadAvatars();
+    AGG = aggregate();
+
+    hideFsLoader();
+    document.getElementById("hero").style.display = "";
+    document.getElementById("content").style.display = "";
+    bindControls();
+    rerenderAll();
+
+    /* Re-render on viewport crossing the mobile breakpoint. Chart.js options
+     * are baked into instances at creation time, so a CSS-only response isn't
+     * enough; we destroy and rebuild charts. Debounced via the MQ event so it
+     * only fires on the transition, not on every pixel of resize. */
+    MOBILE_MQ.addEventListener("change", () => {
+      rerenderAll();
+    });
+  } catch (e) {
+    console.error(e);
+    hideFsLoader();
+    /* Keep hero hidden (it's hidden by default) and just show the error.
+     * Two shapes of `e` arrive here:
+     *   - { kind, detail }: our localized errors above
+     *   - Error|other: a fetch/network/parse failure */
+    if (e && typeof e === "object" && e.kind) {
+      renderErrorMessage(e.kind, e.detail || "");
+    } else {
+      const msg = (e && e.message) ? e.message : String(e);
+      renderErrorMessage("err_load_failed", msg);
+    }
+  }
+})();
+</script>
+</body>
+</html>

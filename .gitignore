@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local-only app settings overrides
+appsettings.Local.json
+/ChatLab/src/ChatLab.Cli/Data
+/.claude/settings.local.json

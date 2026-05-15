@@ -13,7 +13,7 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 ## Layout
 
 - `index.html` — landing page (Pages entry point).
-- `experiments/` — sandbox for quick spike pages (e.g. `cors-fetch.html`).
+- `Experiments/` — sandbox for quick spike pages (e.g. `cors-fetch.html`).
 - `SoftmaxLab/` — a finished sub-toy.
 
 ## Finished toys
@@ -24,8 +24,24 @@ The repo is published as a **GitHub Pages** site. The entry point is `index.html
 
 - Plain HTML + vanilla JS + inline `<style>`. No build step, no npm install required.
 - Keep new toys self-contained in a single HTML file when possible.
-- For experiments, prefer `experiments/<name>.html`.
+- For experiments, prefer `Experiments/<name>.html`.
 - Code comments are always written in English, regardless of the language used in chat.
+
+## Code style
+
+- Always brace control-flow bodies, even for a single statement. Applies to `if`, `else`, `for`, `foreach`, `while`, `do`, `using` — in any language with C-style braces (C#, JS, TS, etc.).
+
+  ```csharp
+  // good
+  if (orphan is not null)
+  {
+      throw new InvalidOperationException(...);
+  }
+
+  // bad
+  if (orphan is not null)
+      throw new InvalidOperationException(...);
+  ```
 
 ## Working style
 
@@ -47,16 +63,18 @@ When asked to write or edit docs (READMEs, AGENTS.md, comments), keep it short a
 
 Subprojects (like `SoftmaxLab/`) can — and should — have their own instruction files when they need them. If a toy has its own conventions, dependencies, quirks, or a more detailed description of its own, document them **inside the subproject**, not here. Keep this central file lean.
 
+The reverse also holds: anything cross-cutting — code style, formatting rules, language conventions that apply to more than one toy — belongs **here**, not in a subproject `AGENTS.md`. If you catch yourself adding the same note to two subproject files, pull it up to this one.
+
 ## `AGENTS.md` vs `CLAUDE.md`
 
 This file (`AGENTS.md`) is the canonical instruction file for AI coding agents — a growing cross-tool convention (Codex, Cursor, Aider, etc. read it).
 
 Claude Code itself looks for `CLAUDE.md`. To avoid duplication, `.claude/CLAUDE.md` is a one-line pointer that imports this file via `@../AGENTS.md`.
 
-Subprojects should follow the same pattern: a subproject-level `AGENTS.md` for the content, and a thin `CLAUDE.md` (either at the subproject root or in `.claude/`) that imports it. The pointer file must contain **only the import line and nothing else** — no `# CLAUDE.md` header, no boilerplate paragraph like "This file provides guidance to Claude Code…". For example, a subproject `CLAUDE.md` placed next to its `AGENTS.md` is exactly:
+Subprojects follow the same pattern: a subproject-level `AGENTS.md` for the content, and a thin `CLAUDE.md` pointer that imports it. The pointer **must** live at `<subproject>/.claude/CLAUDE.md` (not at the subproject root). It must contain **only the import line and nothing else** — no `# CLAUDE.md` header, no boilerplate paragraph like "This file provides guidance to Claude Code…". The pointer is exactly:
 
 ```
-@AGENTS.md
+@../AGENTS.md
 ```
 
 Edit the `AGENTS.md`; leave the pointer alone.

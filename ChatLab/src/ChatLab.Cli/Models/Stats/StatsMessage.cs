@@ -1,0 +1,17 @@
+namespace ChatLab.Cli.Models.Stats;
+
+// A trimmed message record — just enough to drive the activity charts.
+public sealed class StatsMessage
+{
+    public string Type { get; set; } = string.Empty;
+    public DateTime Date { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public string? UserName { get; set; }
+
+    // Concatenation of all text_entities[].text from the source message,
+    // joined by a single space
+    public string? AggregatedText { get; set; }
+
+    // Length in seconds for voice/video messages; null for everything else.
+    public int? DurationSeconds { get; set; }
+}
