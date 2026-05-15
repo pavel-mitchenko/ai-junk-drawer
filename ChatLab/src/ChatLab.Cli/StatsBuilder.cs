@@ -10,7 +10,7 @@ public static class StatsBuilder
     private const string VoiceMessage = "voice_message";
     private const string Text = "text";
 
-    public static ChatStats Build(TelegramExport export)
+    public static (ChatStats Stats, List<StatsUser> Users) Build(TelegramExport export)
     {
         var realMessages = export.Messages
             .Where(m => m.Type == "message")
@@ -44,10 +44,11 @@ public static class StatsBuilder
                 Type = resolved,
                 Date = m.Date,
                 UserId = m.FromId!,
+                UserName = m.From,
             });
         }
 
-        return new ChatStats { Users = users, Messages = messages };
+        return (new ChatStats { Messages = messages }, users);
     }
 
     private static string? ResolveType(TelegramMessage m) => m.MediaType switch
