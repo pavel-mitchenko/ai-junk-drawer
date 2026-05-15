@@ -1,16 +1,16 @@
-using ChatLab.Cli.Models.Activity;
+using ChatLab.Cli.Models.Stats;
 using ChatLab.Cli.Models.Telegram;
 
 namespace ChatLab.Cli;
 
-public static class ActivityBuilder
+public static class StatsBuilder
 {
-    // Categories the activity report tracks. Anything outside these is dropped.
+    // Categories the stats report tracks. Anything outside these is dropped.
     private const string VideoMessage = "video_message";
     private const string VoiceMessage = "voice_message";
     private const string Text = "text";
 
-    public static ChatActivity Build(TelegramExport export)
+    public static ChatStats Build(TelegramExport export)
     {
         var realMessages = export.Messages
             .Where(m => m.Type == "message")
@@ -24,14 +24,14 @@ public static class ActivityBuilder
 
         var users = realMessages
             .GroupBy(m => m.FromId!)
-            .Select(g => new ActivityUser
+            .Select(g => new StatsUser
             {
                 Id = g.Key,
                 Name = g.Select(m => m.From).FirstOrDefault(n => !string.IsNullOrEmpty(n)) ?? string.Empty,
             })
             .ToList();
 
-        var messages = new List<ActivityMessage>();
+        var messages = new List<StatsMessage>();
         foreach (var m in realMessages)
         {
             var resolved = ResolveType(m);
@@ -39,7 +39,7 @@ public static class ActivityBuilder
             {
                 continue;
             }
-            messages.Add(new ActivityMessage
+            messages.Add(new StatsMessage
             {
                 Type = resolved,
                 Date = m.Date,
@@ -47,7 +47,7 @@ public static class ActivityBuilder
             });
         }
 
-        return new ChatActivity { Users = users, Messages = messages };
+        return new ChatStats { Users = users, Messages = messages };
     }
 
     private static string? ResolveType(TelegramMessage m) => m.MediaType switch

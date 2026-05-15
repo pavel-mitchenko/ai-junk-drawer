@@ -7,7 +7,7 @@ Console.WriteLine($"Export directory: {settings.ExportFolder}");
 Console.WriteLine();
 Console.WriteLine("Choose a command:");
 Console.WriteLine("  1. Debug");
-Console.WriteLine("  2. Build activity");
+Console.WriteLine("  2. Build stats");
 Console.Write("> ");
 var input = Console.ReadLine()?.Trim();
 
@@ -17,7 +17,7 @@ switch (input)
         await DebugCommand.RunAsync(settings.ExportFolder);
         break;
     case "2":
-        await BuildActivityCommand.RunAsync(settings.ExportFolder);
+        await BuildStatsCommand.RunAsync(settings.ExportFolder);
         break;
     default:
         Console.WriteLine($"Unknown command: '{input}'.");

@@ -1,6 +1,6 @@
 namespace ChatLab.Cli.Commands;
 
-public static class BuildActivityCommand
+public static class BuildStatsCommand
 {
     public static async Task RunAsync(string exportFolder)
     {
@@ -9,15 +9,15 @@ public static class BuildActivityCommand
 
         var totalInput = export.Messages.Count;
         var nonService = export.Messages.Count(m => m.Type == "message");
-        var activity = ActivityBuilder.Build(export);
-        var skipped = nonService - activity.Messages.Count;
+        var stats = StatsBuilder.Build(export);
+        var skipped = nonService - stats.Messages.Count;
 
         Console.WriteLine($"Source messages:     {totalInput}");
         Console.WriteLine($"  of which non-service: {nonService}");
-        Console.WriteLine($"Users:               {activity.Users.Count}");
-        Console.WriteLine($"Activity messages:   {activity.Messages.Count}");
+        Console.WriteLine($"Users:               {stats.Users.Count}");
+        Console.WriteLine($"Stats messages:      {stats.Messages.Count}");
 
-        var byType = activity.Messages
+        var byType = stats.Messages
             .GroupBy(m => m.Type)
             .OrderByDescending(g => g.Count());
 
