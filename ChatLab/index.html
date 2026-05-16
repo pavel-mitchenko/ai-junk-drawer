@@ -562,6 +562,42 @@
       </div>
     </section>
 
+    <!-- Section: by month -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s_month_title">По месяцам</h2>
+          <div class="section-sub" data-i18n="s_month_sub">Когда чат живее, а когда тихо</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chart-box"><canvas id="chart-month"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Section: chattiest days top 10 -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s_top_days_title">Самые болтливые дни — топ-10</h2>
+          <div class="section-sub" data-i18n="s_top_days_sub">Конкретные дни, когда сообщений было больше всего</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="stats" id="top-days-table">
+            <thead>
+              <tr>
+                <th style="cursor: default;" data-i18n="col_day">День</th>
+                <th class="num" style="cursor: default;" data-i18n="col_count">Сообщений</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- Section: voice durations -->
     <section class="block" id="voice-dur-block">
       <div class="section-head">
@@ -782,6 +818,12 @@ const I18N = {
     s4_sub: "Сколько сообщений было в каждом году",
     s5_title: "По дням недели",
     s5_sub: "Любимый день для болтовни",
+    s_month_title: "По месяцам",
+    s_month_sub: "Когда чат живее, а когда тихо",
+    s_top_days_title: "Самые болтливые дни — топ-10",
+    s_top_days_sub: "Конкретные дни, когда сообщений было больше всего",
+    col_day: "День", col_count: "Сообщений",
+    months_short: ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"],
     sv_title: "Голосовые сообщения: длительности",
     sv_sub: "Кто говорит дольше всех и кто короче всех",
     svid_title: "Видеосообщения: длительности",
@@ -852,6 +894,12 @@ const I18N = {
     s4_sub: "How many messages each year",
     s5_title: "By day of week",
     s5_sub: "Favorite day to talk",
+    s_month_title: "By month",
+    s_month_sub: "Which months are loud and which are quiet",
+    s_top_days_title: "Chattiest days — top 10",
+    s_top_days_sub: "Specific days with the most messages",
+    col_day: "Day", col_count: "Messages",
+    months_short: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
     sv_title: "Voice messages: durations",
     sv_sub: "Who talks the most and who keeps it short",
     svid_title: "Video messages: durations",
@@ -1347,6 +1395,7 @@ function aggregate() {
     counts,
     minDate, maxDate,
     activeDays: perDay.size,
+    perDay,
     totalMessages: parsed.length,
     hourAll, weekdayAll, hourByUser,
     yearAll, yearByUser,
@@ -2025,6 +2074,55 @@ function renderWeekday() {
   charts.wd = new Chart(ctx, { type: "bar", data: { labels, datasets }, options: opts });
 }
 
+function renderMonthChart() {
+  destroyChart("month");
+  const ctx = document.getElementById("chart-month");
+  const labels = I18N[LANG].months_short;
+
+  const datasets = USER_IDS.map((id) => {
+    const arr = new Array(12).fill(0);
+    for (const p of AGG.parsed) {
+      if (p.userId !== id) { continue; }
+      arr[p.date.getMonth()]++;
+    }
+    return {
+      label: AGG.users[id]?.alias || id,
+      data: arr,
+      backgroundColor: userColor(id),
+      borderRadius: 6,
+      stack: "m"
+    };
+  });
+
+  const opts = commonChartOpts();
+  opts.scales.x.stacked = true;
+  opts.scales.y.stacked = true;
+  opts.scales.x.grid = { display: false };
+
+  charts.month = new Chart(ctx, { type: "bar", data: { labels, datasets }, options: opts });
+}
+
+function renderTopDays() {
+  const tbody = document.querySelector("#top-days-table tbody");
+  tbody.innerHTML = "";
+
+  const top = [...AGG.perDay.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  for (const [k, count] of top) {
+    const tr = document.createElement("tr");
+    const tdDay = document.createElement("td");
+    tdDay.textContent = fmtDate(new Date(k));
+    const tdCount = document.createElement("td");
+    tdCount.className = "num";
+    tdCount.textContent = fmtNum(count);
+    tr.appendChild(tdDay);
+    tr.appendChild(tdCount);
+    tbody.appendChild(tr);
+  }
+}
+
 function renderFacts() {
   const wd = I18N[LANG].weekdays_short;
 
@@ -2200,6 +2298,8 @@ function rerenderAll() {
   renderTable();
   renderYearChart();
   renderWeekday();
+  renderMonthChart();
+  renderTopDays();
   renderDurations();
   renderFacts();
 }
