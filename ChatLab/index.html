@@ -585,6 +585,17 @@
       </div>
     </section>
 
+    <!-- Section: weekday distribution per user -->
+    <section class="block">
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="s_wdpu_title">Личная активность по дням недели</h2>
+          <div class="section-sub" data-i18n="s_wdpu_sub">Когда каждый пишет чаще всего</div>
+        </div>
+      </div>
+      <div class="per-user-grid" id="weekday-per-user-grid"></div>
+    </section>
+
     <!-- Section: by month -->
     <section class="block">
       <div class="section-head">
@@ -818,6 +829,8 @@ const I18N = {
     s4_sub: "Сколько сообщений было в каждом году",
     s5_title: "По дням недели",
     s5_sub: "Любимый день для болтовни",
+    s_wdpu_title: "Личная активность по дням недели",
+    s_wdpu_sub: "Когда каждый пишет чаще всего",
     s_month_title: "По месяцам",
     s_month_sub: "Когда чат живее, а когда тихо",
     s_top_days_title: "Самые болтливые дни — топ-10",
@@ -894,6 +907,8 @@ const I18N = {
     s4_sub: "How many messages each year",
     s5_title: "By day of week",
     s5_sub: "Favorite day to talk",
+    s_wdpu_title: "Personal weekday activity",
+    s_wdpu_sub: "When each person writes most often",
     s_month_title: "By month",
     s_month_sub: "Which months are loud and which are quiet",
     s_top_days_title: "Chattiest days — top 10",
@@ -2074,6 +2089,73 @@ function renderWeekday() {
   charts.wd = new Chart(ctx, { type: "bar", data: { labels, datasets }, options: opts });
 }
 
+function renderWeekdayPerUser() {
+  const grid = document.getElementById("weekday-per-user-grid");
+  grid.innerHTML = "";
+
+  const labels = I18N[LANG].weekdays_short;
+
+  for (const id of USER_IDS) {
+    destroyChart("wdpu_" + id);
+
+    /* Per-user weekday counts, then normalize to percent of that user's
+     * own total. Empty users get all zeros — the chart just renders flat. */
+    const counts = new Array(7).fill(0);
+    for (const p of AGG.parsed) {
+      if (p.userId !== id) { continue; }
+      const wd = (p.date.getDay() + 6) % 7;
+      counts[wd]++;
+    }
+    const total = counts.reduce((a, b) => a + b, 0);
+    const percents = counts.map((c) => (total > 0 ? (c / total) * 100 : 0));
+
+    const card = document.createElement("div");
+    card.className = "card";
+    const head = document.createElement("div");
+    head.className = "head";
+    head.appendChild(avatarEl(id, 36));
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = AGG.users[id]?.alias || id;
+    head.appendChild(name);
+    card.appendChild(head);
+
+    const box = document.createElement("div");
+    box.className = "chart-box small";
+    const canvas = document.createElement("canvas");
+    canvas.id = "wdpu-canvas-" + id;
+    box.appendChild(canvas);
+    card.appendChild(box);
+    grid.appendChild(card);
+
+    const opts = commonChartOpts();
+    opts.plugins.legend.display = false;
+    opts.scales.x.grid = { display: false };
+    opts.scales.y.ticks.callback = (v) => v + "%";
+    opts.scales.y.ticks.maxTicksLimit = 3;
+    /* Round up to a clean ceiling so the tallest bar isn't hugging the lid. */
+    const peak = Math.max(...percents);
+    opts.scales.y.max = peak > 0 ? Math.max(10, Math.ceil(peak / 10) * 10) : 10;
+    opts.plugins.tooltip.callbacks = {
+      label: (ctx) => " " + percents[ctx.dataIndex].toFixed(1) + "% (" +
+        fmtNum(counts[ctx.dataIndex]) + " " + t("msgs") + ")"
+    };
+
+    charts["wdpu_" + id] = new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          data: percents,
+          backgroundColor: userColor(id),
+          borderRadius: 6
+        }]
+      },
+      options: opts
+    });
+  }
+}
+
 function renderMonthChart() {
   destroyChart("month");
   const ctx = document.getElementById("chart-month");
@@ -2298,6 +2380,7 @@ function rerenderAll() {
   renderTable();
   renderYearChart();
   renderWeekday();
+  renderWeekdayPerUser();
   renderMonthChart();
   renderTopDays();
   renderDurations();
